@@ -1,0 +1,14 @@
+matplotlib
+cytoolz
+seaborn
+PyYAML
+pandas==0.23.4
+pyprind
+sklearn
+scipy
+bayesian-optimization==0.6
+tables
+python-dotenv
+sortedcontainers
+numpy==1.16.0
+torch
