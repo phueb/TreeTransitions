@@ -43,7 +43,7 @@ def main_job(param2val, min_probe_freq=10):
     # make tokens with hierarchical n-gram structure
     vocab, tokens, ngram2legals_mat = make_data(
         params.NUM_TOKENS, params.LEGALS_DISTRIBUTION, params.MAX_NGRAM_SIZE,
-        params.NUM_DESCENDANTS, params.NUM_LEVELS, params.E)
+        params.NUM_DESCENDANTS, params.NUM_LEVELS, params.E, params.TRUNCATE)
     num_vocab = len(vocab)
     num_types_in_tokens = len(set(tokens))
     word2id = {word: n for n, word in enumerate(vocab)}
@@ -52,8 +52,8 @@ def main_job(param2val, min_probe_freq=10):
     print('num_vocab={}'.format(num_vocab))
     print('num types in tokens={}'.format(num_types_in_tokens))
     if not num_types_in_tokens == num_vocab:
-        raise RuntimeError('Not all types were found in tokens.'
-                           'Decrease NUM_LEVELS, increase NUM_TOKENS, or decrease SENTENCE_LEN.')
+        raise RuntimeError('Not all types ({}/{} were found in tokens.'.format(
+            num_types_in_tokens, num_vocab) + 'Decrease NUM_LEVELS, increase NUM_TOKENS, or increase TRUNCATE.')
 
     #
     num_theoretical_legals = num_vocab / (2 ** params.MAX_NGRAM_SIZE)

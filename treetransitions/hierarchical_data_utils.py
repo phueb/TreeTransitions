@@ -11,21 +11,28 @@ from scipy.spatial.distance import pdist
 from matplotlib.colors import to_hex
 
 
-def generate_tokens_from_zipfian(words, num_tokens):  # TODO use
+def generate_tokens_from_zipfian(words, num_tokens, oov='OOV'):  # TODO unused
     num_vocab = len(words)
-    res = [words[i] if i < num_vocab else np.random.choice(words, size=1) for i in np.random.zipf(2, num_tokens)]
+    res = [words[i] if i < num_vocab else oov for i in np.random.zipf(2, num_tokens)]
     return res
 
 
-def sample_once_linear_or_uniform(words, legals_distribution):
-    words = list(sorted(words))  # need to sort to ensure that rand_id always refers to same word
+def sample_from_legals(legals, legals_distribution, vocab_id, truncate):
+    # truncate
+    num_truncated = int(len(legals) * truncate)
+    sorted_words = list(sorted(legals))  # need to sort to ensure that rand_id always refers to same word
+    np.random.seed(vocab_id)  # to ensure that truncation will include same legals repeat occurrences of  same word
+    truncated = np.random.choice(sorted_words, size=num_truncated, replace=False)
+    # shape of distribution
     if legals_distribution == 'uniform':
         p = None
     elif legals_distribution == 'triangular':
-        p = np.arange(1, len(words) + 1) / np.sum(np.arange(1, len(words) + 1))
+        p = np.arange(1, num_truncated + 1) / np.sum(np.arange(1, num_truncated + 1))
     else:
         raise AttributeError('Invalid arg to "legals_distribution".')
-    res = np.random.choice(words, size=1, p=p).item()
+    # sample
+    np.random.seed()  # reset random seed
+    res = np.random.choice(truncated, size=1, p=p).item()
     return res
 
 
@@ -127,25 +134,28 @@ def sample_from_hierarchical_diffusion(node0, num_descendants, num_levels, e):
     return nodes
 
 
-def make_chunk(chunk_id, size2word2legals_, vocab_, num_start_, chunk_size_, legals_distribution, random_interval=np.nan):
-    tokens_chunk = np.random.choice(vocab_, size=num_start_).tolist()  # prevents indexError at start
-    pbar = pyprind.ProgBar(chunk_size_) if chunk_id == 0 else None
-    for loc in range(chunk_size_):
+def make_chunk(chunk_id, size2word2legals, vocab, num_start, chunk_size, legals_distribution, truncate,
+               random_interval=np.nan):
+    word2id = {w: n for n, w in enumerate(vocab)}
+    tokens_chunk = np.random.choice(vocab, size=num_start).tolist()  # prevents indexError at start
+    previous_token = tokens_chunk[-1]
+    pbar = pyprind.ProgBar(chunk_size) if chunk_id == 0 else None
+    for loc in range(chunk_size):
         # append random word to break structure into pseudo-sentences
         if loc % random_interval == 0:
-            new_token = np.random.choice(vocab_, size=1).item()
+            new_token = np.random.choice(vocab, size=1).item()
             tokens_chunk.append(new_token)
             continue
         # append word which is constrained by hierarchical structure
         else:
             # get words which are legal to come next
-            legals = set(vocab_)
-            for size, word2legals in size2word2legals_.items():
+            legals = set(vocab)
+            for size, word2legals in size2word2legals.items():
                 previous_token = tokens_chunk[-size]
                 legals.intersection_update(word2legals[previous_token])
             # sample from legals
             try:
-                new_token = sample_once_linear_or_uniform(list(legals), legals_distribution)
+                new_token = sample_from_legals(list(legals), legals_distribution, word2id[previous_token], truncate)
             except ValueError:  # no legals
                 raise RuntimeError('No legal next word available.'
                                    'Increase E - the probability of a flip in hierarchical diffusion process')
@@ -155,7 +165,7 @@ def make_chunk(chunk_id, size2word2legals_, vocab_, num_start_, chunk_size_, leg
     return tokens_chunk
 
 
-def make_data(num_tokens, legals_distribution, max_ngram_size=6, num_descendants=2, num_levels=12, e=0.2,
+def make_data(num_tokens, legals_distribution, max_ngram_size=6, num_descendants=2, num_levels=12, e=0.2, truncate=1,
               num_chunks=4):
     """
     generate text by adding one word at a time to a list of words.
@@ -195,7 +205,7 @@ def make_data(num_tokens, legals_distribution, max_ngram_size=6, num_descendants
     pool = mp.Pool(processes=num_chunks)
     chunk_size = num_tokens // num_chunks
     results = [pool.apply_async(
-        make_chunk, args=(chunk_id, size2word2legals, vocab, max_ngram_size, chunk_size, legals_distribution))
+        make_chunk, args=(chunk_id, size2word2legals, vocab, max_ngram_size, chunk_size, legals_distribution, truncate))
         for chunk_id in range(num_chunks)]
     tokens = []
     print('Creating tokens from hierarchical dependency structure...')

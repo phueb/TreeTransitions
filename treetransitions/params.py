@@ -12,6 +12,7 @@ class Params:
     NUM_DESCENDANTS = [2]  # 2
     NUM_LEVELS = [8]  # 12
     E = [0.2]  # 0.2
+    TRUNCATE = [1, 1]
     LEGALS_DISTRIBUTION = ['uniform', 'triangular']
     PARENT_COUNT = [256]  # exact size of single parent cluster
     NUM_CATS_LIST = [[2, 4, 8, 16, 32]]
@@ -21,8 +22,8 @@ class Params:
     bptt = MAX_NGRAM_SIZE
     mb_size = [64]
     learning_rate = [[0.001, 0.00, 20]]  # 0.01 is too fast
-    num_epochs = [100]
+    num_epochs = [20]
     num_hiddens = [128]
     num_pp_seqs = [10]  # number of documents to calc perplexity for
-    optimization = ['adagrad', 'sgd']
+    optimization = ['adagrad']
 
