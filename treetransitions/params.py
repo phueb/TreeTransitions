@@ -10,9 +10,9 @@ class Params:
     NUM_TOKENS = [5 * 10 ** 6]  # TODO
     MAX_NGRAM_SIZE = [1]
     NUM_DESCENDANTS = [2]  # 2
-    NUM_LEVELS = [8]  # 12
+    NUM_LEVELS = [12]  # 12
     E = [0.2]  # 0.2
-    # TRUNCATE = [1, 1]
+    TRUNCATE = [1, 1]
     LEGALS_DISTRIBUTION = ['uniform', 'triangular']
     PARENT_COUNT = [256]  # exact size of single parent cluster
     NUM_CATS_LIST = [[2, 4, 8, 16, 32]]
@@ -35,7 +35,7 @@ class DefaultParams:
     NUM_DESCENDANTS = [2]
     NUM_LEVELS = [8]
     E = [0.2]
-    # TRUNCATE = [1]
+    TRUNCATE = [1]
     LEGALS_DISTRIBUTION = ['uniform']
     PARENT_COUNT = [256]  # exact size of single parent cluster
     NUM_CATS_LIST = [[2, 4, 8, 16, 32]]
