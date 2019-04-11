@@ -17,7 +17,6 @@ class LocalDirs:
 
 class Eval:
     debug = False
-    plot_traj = False
 
 
 class Graph:

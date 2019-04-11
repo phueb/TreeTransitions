@@ -2,8 +2,6 @@ from cytoolz import itertoolz
 from sklearn.metrics.pairwise import cosine_similarity
 import numpy as np
 from collections import Counter
-import matplotlib.pyplot as plt
-import seaborn as sns
 import yaml
 import pandas as pd
 
@@ -11,29 +9,6 @@ from treetransitions.hierarchical_data_utils import make_data, make_probe_data, 
 from treetransitions.rnn import RNN
 from treetransitions.params import ObjectView
 from treetransitions import config
-
-
-def plot_ba_trajs(d1, d2, title):
-    fig, ax = plt.subplots(figsize=(10, 5), dpi=None)
-    plt.title(title)
-    ax.set_xlabel('Epoch')
-    ax.set_ylabel('Balanced Accuracy')
-    ax.spines['right'].set_visible(False)
-    ax.spines['top'].set_visible(False)
-    ax.tick_params(axis='both', which='both', top=False, right=False)
-    ax.yaxis.grid(True)
-    ax.set_ylim([0.5, 1.0])
-    # plot
-    num_trajs = len(d1)
-    palette = iter(sns.color_palette('hls', num_trajs))
-    for num_cats, bas in sorted(d1.items(), key=lambda i: i[0]):
-        c = next(palette)
-        ax.plot(bas, '-', color=c,
-                label='num_cats={}'.format(num_cats))
-        ax.axhline(y=d2[num_cats], linestyle='dashed', color=c)
-    plt.legend(bbox_to_anchor=(1.0, 1.0), borderaxespad=1.0, frameon=False)
-    plt.tight_layout()
-    plt.show()
 
 
 def main_job(param2val, min_probe_freq=10):
@@ -116,12 +91,6 @@ def main_job(param2val, min_probe_freq=10):
         srn.train_epoch(train_seqs, lr, verbose=False)
         print('epoch={:>2}/{:>2} | pp={:>5}\n'.format(epoch, srn.num_epochs, int(pp)))
 
-    # eval
-    if config.Eval.plot_traj:
-        plot_ba_trajs(num_cats2bas, num_cats2max_ba,
-                      title='NUM_TOKENS={} MAX_NGRAM_SIZE={} NUM_DESCENDANTS={} NUM_LEVELS={} E={} ZIPF_A={}'.format(
-                          params.NUM_TOKENS, params.MAX_NGRAM_SIZE, params.NUM_DESCENDANTS,
-                          params.NUM_LEVELS, params.E, params.LEGALS_DISTRIBUTION))
     # traj_df
     traj_df = pd.DataFrame(num_cats2bas)  # TODO test
 
