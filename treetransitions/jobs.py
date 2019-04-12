@@ -21,8 +21,8 @@ def main_job(param2val, min_probe_freq=10):
 
     # make tokens with hierarchical n-gram structure
     vocab, tokens, ngram2legals_mat = make_data(
-        params.NUM_TOKENS, params.LEGALS_DISTRIBUTION, params.MAX_NGRAM_SIZE,
-        params.NUM_DESCENDANTS, params.NUM_LEVELS, params.E, params.TRUNCATE)
+        params.num_tokens, params.legals_distribution, params.max_ngram_size,
+        params.num_descendants, params.num_levels, params.mutation_prob, params.truncate)
     num_vocab = len(vocab)
     num_types_in_tokens = len(set(tokens))
     word2id = {word: n for n, word in enumerate(vocab)}
@@ -32,26 +32,19 @@ def main_job(param2val, min_probe_freq=10):
     print('num types in tokens={}'.format(num_types_in_tokens))
     if not num_types_in_tokens == num_vocab:
         raise RuntimeError('Not all types ({}/{} were found in tokens.'.format(
-            num_types_in_tokens, num_vocab) + 'Decrease NUM_LEVELS, increase NUM_TOKENS, or increase TRUNCATE.')
+            num_types_in_tokens, num_vocab) + 'Decrease num_levels, increase num_tokens, or increase truncate.')
 
     #
-    num_theoretical_legals = num_vocab / (2 ** params.MAX_NGRAM_SIZE)
+    num_theoretical_legals = num_vocab / (2 ** params.max_ngram_size)
     print('num_theoretical_legals={}'.format(num_theoretical_legals))  # perplexity should converge to this value
-
-    # train_seqs
-    train_seqs = []
-    for seq in itertoolz.partition_all(params.mb_size, token_ids):  # a seq contains mb_size token_ids
-        if len(seq) == params.mb_size:
-            train_seqs.append(list(seq))  # need to convert tuple to list
-    print('num sequences={}'.format(len(train_seqs)))
 
     # probes_data
     num_cats2probes_data = {}
     num_cats2max_ba = {}
-    for num_cats in params.NUM_CATS_LIST:
-        print('Getting {} categories with MIN_COUNT={}...'.format(num_cats, params.PARENT_COUNT))
-        legals_mat = ngram2legals_mat[params.NGRAM_SIZE_FOR_CAT]
-        probes, probe2cat = make_probe_data(legals_mat, vocab, num_cats, params.PARENT_COUNT,
+    for num_cats in params.num_cats_list:
+        print('Getting {} categories with MIN_COUNT={}...'.format(num_cats, params.parent_count))
+        legals_mat = ngram2legals_mat[params.structure_ngram_size]
+        probes, probe2cat = make_probe_data(legals_mat, vocab, num_cats, params.parent_count,
                                             plot=False)
         num_cats2probes_data[num_cats] = (probes, probe2cat)
         c = Counter(tokens)
@@ -70,30 +63,34 @@ def main_job(param2val, min_probe_freq=10):
         print()
         num_cats2max_ba[num_cats] = ba2
 
-
-    # TODO add option to train on local iterations vs global iterations
-
     # train once
     srn = RNN(num_vocab, params)  # num_seqs_in_batch must be 1 to ensure mb_size is as specified in params
-    lr = srn.learning_rate[0]  # initial
-    decay = srn.learning_rate[1]
-    num_epochs_without_decay = srn.learning_rate[2]
-    num_cats2bas = {num_cats: [] for num_cats in params.NUM_CATS_LIST}
-    for epoch in range(srn.num_epochs):
+    num_cats2bas = {num_cats: [] for num_cats in params.num_cats_list}
+    part_size = params.num_tokens // params.num_partitions
+    part_id = 0
+    for part in itertoolz.partition_all(part_size, token_ids):
+        part_id += 1
         # perplexity
-        pp = srn.calc_seqs_pp(train_seqs[:params.num_pp_seqs])  # TODO how to calc pp on all seqs without mem error?
+        pp_seqs = [list(part)]  # need to convert tuple to list + calc_seqs_pp() expects multiple seqs
+        pp = srn.calc_seqs_pp(pp_seqs)  # TODO how to calc pp on all partitions without mem error?
         # ba
         for num_cats, (probes, probe2cat) in sorted(num_cats2probes_data.items(), key=lambda i: i[0]):
             wx = srn.get_wx()  # TODO also test wy
             p_acts = np.asarray([wx[word2id[p], :] for p in probes])
             ba = calc_ba(cosine_similarity(p_acts), probes, probe2cat)
             num_cats2bas[num_cats].append(ba)
-            print('epoch={:>2}/{:>2} | ba={:.3f} num_cats={}'.format(epoch, srn.num_epochs, ba, num_cats))
+            print('partition={:>2}/{:>2} | ba={:.3f} num_cats={}'.format(part_id, srn.num_partitions, ba, num_cats))
+        #
+        print('partition={:>2}/{:>2} | before-training partition pp={:>5}\n'.format(
+            part_id, srn.num_partitions, int(pp)))
         # train
-        lr_decay = decay ** max(epoch - num_epochs_without_decay, 0)
-        lr = lr * lr_decay  # decay lr if it is time
-        srn.train_epoch(train_seqs, lr, verbose=False)
-        print('epoch={:>2}/{:>2} | pp={:>5}\n'.format(epoch, srn.num_epochs, int(pp)))
+        seqs_in_part = [list(seq) for seq in itertoolz.partition_all(params.mb_size, part)]
+        print('num mb_size sequences in partition={}'.format(len(seqs_in_part)))
+        for iteration in range(params.num_iterations):
+
+            # TODO test train on local iterations
+
+            srn.train_partition(seqs_in_part, verbose=False)  # a seq is a list of mb_size token_ids
 
     #  save results to disk
     if not results_p.parent.exists():

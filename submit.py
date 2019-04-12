@@ -34,7 +34,7 @@ if __name__ == '__main__':
     # make list of hyperparameter configurations to submit
     if namespace.debug:
         print('WARNING: Debugging is on.')
-        Params.num_epochs = [2]
+        Params.num_partitions = [2]
     param2val_list = list_all_param2vals(Params)
 
     # submit to cluster

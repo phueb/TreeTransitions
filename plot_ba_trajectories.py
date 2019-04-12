@@ -16,8 +16,8 @@ TITLE_FONTSIZE = 10
 
 
 default_dict = MatchParams.__dict__.copy()
-MatchParams.LEGALS_DISTRIBUTION = ['triangular']
-MatchParams.num_epochs = [20]
+MatchParams.legals_distribution = ['triangular']
+MatchParams.num_partitions = [20]
 
 
 def gen_param_ps(param2requested, param2default):
@@ -82,7 +82,7 @@ def plot_ba_trajs(d1, d2, title):
                 label='num_cats={}'.format(num_cats))
         if d2 is not None:
             ax.axhline(y=d2[num_cats], linestyle='dashed', color=c)
-    plt.legend(bbox_to_anchor=(1.0, 1.0), borderaxespad=1.0, frameon=False)
+    plt.legend(loc='upper left', frameon=False)
     plt.tight_layout()
     plt.show()
 
@@ -92,6 +92,6 @@ summary_data = []
 for param_p, label in gen_param_ps(MatchParams, default_dict):
     num_cats2bas = make_num_cats2bas(param_p)
     #
-    num_cats2max_ba = None # TODO
+    num_cats2max_ba = None  # TODO
     title = make_title(param_p)
     plot_ba_trajs(num_cats2bas, num_cats2max_ba, title)

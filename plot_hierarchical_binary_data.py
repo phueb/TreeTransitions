@@ -5,12 +5,12 @@ from scipy.cluster.hierarchy import linkage, dendrogram
 
 from treetransitions.hierarchical_data_utils import sample_from_hierarchical_diffusion, to_corr_mat, plot_heatmap, cluster
 
-NUM_DESCENDANTS = 2  # 2
-NUM_LEVELS = 12  # 10
-E = 0.2  # 0.05, the higher, the more unique rows in data (and lower first PC)
+num_descendants = 2  # 2
+num_levels = 12  # 10
+mutation_prob = 0.2  # 0.05, the higher, the more unique rows in data (and lower first PC)
 
 # vocab
-num_vocab = NUM_DESCENDANTS ** NUM_LEVELS
+num_vocab = num_descendants ** num_levels
 print('num_vocab={}'.format(num_vocab))
 vocab = ['w{}'.format(i) for i in np.arange(num_vocab)]
 word2id = {word: n for n, word in enumerate(vocab)}
@@ -20,7 +20,7 @@ word2id = {word: n for n, word in enumerate(vocab)}
 mat = np.zeros((num_vocab, num_vocab))
 for n in range(num_vocab):
     node0 = -1 if np.random.binomial(n=1, p=0.5) else 1
-    mat[n] = sample_from_hierarchical_diffusion(node0, NUM_DESCENDANTS, NUM_LEVELS, E)
+    mat[n] = sample_from_hierarchical_diffusion(node0, num_descendants, num_levels, mutation_prob)
 print(mat)
 # corr_mat
 corr_mat = to_corr_mat(mat)

@@ -21,7 +21,7 @@ class RNN:
         # rnn
         self.rnn_type = params.rnn_type
         self.num_hiddens = params.num_hiddens
-        self.num_epochs = params.num_epochs
+        self.num_partitions = params.num_partitions
         self.bptt = params.bptt
         self.learning_rate = params.learning_rate
         self.optimization = params.optimization
@@ -38,9 +38,9 @@ class RNN:
         self.model.cuda()  # call this before constructing optimizer
         self.criterion = torch.nn.CrossEntropyLoss()
         if self.optimization == 'adagrad':
-            self.optimizer = torch.optim.Adagrad(self.model.parameters(), lr=self.learning_rate[0])
+            self.optimizer = torch.optim.Adagrad(self.model.parameters(), lr=self.learning_rate)
         elif self.optimization == 'sgd':
-            self.optimizer = torch.optim.SGD(self.model.parameters(), lr=self.learning_rate[0])
+            self.optimizer = torch.optim.SGD(self.model.parameters(), lr=self.learning_rate)
         else:
             raise AttributeError('Invalid arg to "optimizer"')
 
@@ -66,7 +66,7 @@ class RNN:
             batch = np.vstack(windowed_seqs_partition)
             yield batch
 
-    def train_epoch(self, seqs, lr, verbose):
+    def train_partition(self, seqs, verbose):
         """
         each batch contains all windows in a sequence.
         hidden states are never saved. not across windows, and not across sequences.
@@ -95,7 +95,7 @@ class RNN:
             if self.grad_clip is not None:
                 torch.nn.utils.clip_grad_norm_(self.model.parameters(), self.grad_clip)
                 for p in self.model.parameters():
-                    p.data.add_(-lr, p.grad.data)  # TODO lr decay only happens when using grad clip
+                    p.data.add_(-self.learning_rate, p.grad.data)
             else:
                 self.optimizer.step()
 
@@ -105,7 +105,7 @@ class RNN:
                 secs = time.time() - start_time
                 # print(x)
                 # print(y)
-                print("batch {:,} perplexity: {:8.2f} | seconds elapsed in epoch: {:,.0f} ".format(
+                print("batch {:,} perplexity: {:8.2f} | seconds elapsed in partition: {:,.0f} ".format(
                     step, batch_pp, secs))
 
     # ///////////////////////////////////////////////// evaluation

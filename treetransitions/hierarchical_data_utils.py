@@ -158,7 +158,7 @@ def make_chunk(chunk_id, size2word2legals, vocab, num_start, chunk_size, legals_
                 new_token = sample_from_legals(list(legals), legals_distribution, word2id[previous_token], truncate)
             except ValueError:  # no legals
                 raise RuntimeError('No legal next word available.'
-                                   'Increase E - the probability of a flip in hierarchical diffusion process')
+                                   'Increase mutation_prob - the probability of a flip in hierarchical diffusion process')
             # collect
             tokens_chunk.append(new_token)
         pbar.update() if chunk_id == 0 else None
@@ -171,7 +171,7 @@ def make_data(num_tokens, legals_distribution, max_ngram_size=6, num_descendants
     generate text by adding one word at a time to a list of words.
     each word is constrained by the legals matrices - which are hierarchical -
     and determine the legal successors for each word in the vocabulary.
-    there is one legal matrix for each ngram (in other words, for each distance up to MAX_NGRAM_SIZE)
+    there is one legal matrix for each ngram (in other words, for each distance up to max_ngram_size)
     the set of legal words that can follow a word is the intersection of legal words dictated by each legals matrix.
     the size of the intersection is approximately the same for each word, and a word is sampled uniformly from this set
     the size of the intersection is the best possible perplexity a model can achieve,
