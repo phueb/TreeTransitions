@@ -12,6 +12,10 @@ from treetransitions import config
 
 
 def main_job(param2val, min_probe_freq=10):
+    # check if host is down - do this before any computation
+    results_p = config.RemoteDirs.runs / param2val['param_name'] / param2val['job_name'] / 'results.csv'
+    assert config.RemoteDirs.runs.exists()    # this throws error if host is down
+
     # params
     params = ObjectView(param2val.copy())
 
@@ -91,16 +95,11 @@ def main_job(param2val, min_probe_freq=10):
         srn.train_epoch(train_seqs, lr, verbose=False)
         print('epoch={:>2}/{:>2} | pp={:>5}\n'.format(epoch, srn.num_epochs, int(pp)))
 
-    # traj_df
-    traj_df = pd.DataFrame(num_cats2bas)  # TODO test
-
-    print(traj_df)
-
-    #  save traj_df to shared drive
-    results_p = config.RemoteDirs.runs / param2val['param_name'] / param2val['job_name'] / 'results.csv'
+    #  save results to disk
     if not results_p.parent.exists():
         results_p.parent.mkdir(parents=True)
-    with results_p.open('w') as f:  # TODO test
+    traj_df = pd.DataFrame(num_cats2bas)
+    with results_p.open('w') as f:
         traj_df.to_csv(f, index=False)
 
     # write param2val to shared drive

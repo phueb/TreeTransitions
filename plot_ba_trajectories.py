@@ -17,6 +17,7 @@ TITLE_FONTSIZE = 10
 
 default_dict = MatchParams.__dict__.copy()
 MatchParams.LEGALS_DISTRIBUTION = ['triangular']
+MatchParams.num_epochs = [20]
 
 
 def gen_param_ps(param2requested, param2default):
@@ -41,15 +42,14 @@ def make_title(param_p):
         param2val = yaml.load(f)
     #
     res = ''
-    for param, val in param2val.items():
+    for param, val in sorted(param2val.items(), key=lambda i: i[0]):
         res += '{}={}\n'.format(param, val)
     return res
 
 
 def make_num_cats2bas(param_p):
     results_ps = list(param_p.glob('*num*/results.csv'))
-    if VERBOSE:
-        print('Found {} results files'.format(len(results_ps)))
+    print('Found {} results files'.format(len(results_ps)))
     dfs = []
     for results_p in results_ps:
         with results_p.open('rb') as f:
