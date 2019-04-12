@@ -20,7 +20,7 @@ def run_on_cluster():
     for param2val in param2val_chunk:
         main_job(param2val)
     #
-    print('Finished all rnn jobs at {}.'.format(datetime.now()))
+    print('Finished all TreeTransitions jobs at {}.'.format(datetime.now()))
     print()
 
 
