@@ -17,22 +17,18 @@ def generate_tokens_from_zipfian(words, num_tokens, oov='OOV'):  # TODO unused
     return res
 
 
-def sample_from_legals(legals, legals_distribution, vocab_id, truncate):
-    # truncate
-    num_truncated = int(len(legals) * truncate)
+def sample_from_legals(legals, legals_distribution):
+    num_legals = len(legals)
     sorted_words = list(sorted(legals))  # need to sort to ensure that rand_id always refers to same word
-    np.random.seed(vocab_id)  # to ensure that truncation will include same legals repeat occurrences of  same word
-    truncated = np.random.choice(sorted_words, size=num_truncated, replace=False)
     # shape of distribution
     if legals_distribution == 'uniform':
         p = None
     elif legals_distribution == 'triangular':
-        p = np.arange(1, num_truncated + 1) / np.sum(np.arange(1, num_truncated + 1))
+        p = np.arange(1, num_legals + 1) / np.sum(np.arange(1, num_legals + 1))
     else:
         raise AttributeError('Invalid arg to "legals_distribution".')
     # sample
-    np.random.seed()  # reset random seed
-    res = np.random.choice(truncated, size=1, p=p).item()
+    res = np.random.choice(sorted_words, size=1, p=p).item()
     return res
 
 
@@ -136,9 +132,7 @@ def sample_from_hierarchical_diffusion(node0, num_descendants, num_levels, e):
 
 def make_chunk(chunk_id, size2word2legals, vocab, num_start, chunk_size, legals_distribution, truncate,
                random_interval=np.nan):
-    word2id = {w: n for n, w in enumerate(vocab)}
     tokens_chunk = np.random.choice(vocab, size=num_start).tolist()  # prevents indexError at start
-    previous_token = tokens_chunk[-1]
     pbar = pyprind.ProgBar(chunk_size) if chunk_id == 0 else None
     for loc in range(chunk_size):
         # append random word to break structure into pseudo-sentences
@@ -155,10 +149,9 @@ def make_chunk(chunk_id, size2word2legals, vocab, num_start, chunk_size, legals_
                 legals.intersection_update(word2legals[previous_token])
             # sample from legals
             try:
-                new_token = sample_from_legals(list(legals), legals_distribution, word2id[previous_token], truncate)
+                new_token = sample_from_legals(list(legals), legals_distribution)
             except ValueError:  # no legals
-                raise RuntimeError('No legal next word available.'
-                                   'Increase mutation_prob - the probability of a flip in hierarchical diffusion process')
+                raise RuntimeError('No legal next word available. Increase mutation_prob')
             # collect
             tokens_chunk.append(new_token)
         pbar.update() if chunk_id == 0 else None
@@ -199,7 +192,9 @@ def make_data(num_tokens, legals_distribution, max_ngram_size=6, num_descendants
         legals_mat = ngram2slegals_mat[ngram_size]
         word2legals = {}
         for col_word, col in zip(vocab, legals_mat.T):  # col contains information about which row_words come next
-            word2legals[col_word] = [w for w, val in zip(vocab, col) if val == word2node0[w]]
+            all_legals = [w for w, val in zip(vocab, col) if val == word2node0[w]]
+            num_truncated = int(len(all_legals) * truncate)
+            word2legals[col_word] = np.random.choice(all_legals, size=num_truncated, replace=False)
         size2word2legals[ngram_size] = word2legals
     # get one token at a time
     pool = mp.Pool(processes=num_chunks)
