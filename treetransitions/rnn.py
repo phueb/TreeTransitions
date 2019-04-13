@@ -112,21 +112,23 @@ class RNN:
 
     def calc_seqs_pp(self, seqs):
         self.model.eval()  # protects from dropout
-        all_windows = np.vstack([self.to_windows(seq) for seq in seqs])
-        self.model.batch_size = len(all_windows)
-
-        # prepare inputs
-        x = all_windows[:, :-1]
-        y = all_windows[:, -1]
-        inputs = torch.cuda.LongTensor(x.T)  # requires [num_steps, mb_size]
-        targets = torch.cuda.LongTensor(y)
-
-        # forward pass
-        hidden = self.model.init_hidden()  # this must be here to re-init graph
-        logits = self.model(inputs, hidden)
-        self.optimizer.zero_grad()  # sets all gradients to zero
-        loss = self.criterion(logits, targets).item()
-        res = np.exp(loss)
+        loss_sum = 0
+        num_batches = 0
+        for batch in self.gen_batches(seqs):
+            self.model.batch_size = len(batch)  # dynamic batch size
+            x = batch[:, :-1]
+            y = batch[:, -1]
+            #
+            inputs = torch.cuda.LongTensor(x.T)  # requires [num_steps, mb_size]
+            targets = torch.cuda.LongTensor(y)
+            hidden = self.model.init_hidden()  # this must be here to re-init graph
+            logits = self.model(inputs, hidden)
+            #
+            self.optimizer.zero_grad()  # sets all gradients to zero
+            loss_sum += self.criterion(logits, targets).item()
+            num_batches += 1
+        #
+        res = np.exp(loss_sum / num_batches)
         return res
 
     def calc_logits(self, seqs):

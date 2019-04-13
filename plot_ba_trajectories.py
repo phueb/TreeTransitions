@@ -17,7 +17,7 @@ TITLE_FONTSIZE = 10
 
 default_dict = MatchParams.__dict__.copy()
 MatchParams.legals_distribution = ['uniform', 'triangular']
-MatchParams.num_partitions = [256]
+MatchParams.num_partitions = [2]
 
 
 def gen_param_ps(param2requested, param2default):

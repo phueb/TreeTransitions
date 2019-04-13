@@ -70,9 +70,9 @@ def main_job(param2val, min_probe_freq=10):
     part_id = 0
     for part in itertoolz.partition_all(part_size, token_ids):
         part_id += 1
+        seqs_in_part = [list(seq) for seq in itertoolz.partition_all(params.mb_size, part)]
         # perplexity
-        pp_seqs = [list(part)]  # need to convert tuple to list + calc_seqs_pp() expects multiple seqs
-        pp = srn.calc_seqs_pp(pp_seqs)  # TODO how to calc pp on all partitions without mem error?
+        pp = srn.calc_seqs_pp(seqs_in_part)
         # ba
         for num_cats, (probes, probe2cat) in sorted(num_cats2probes_data.items(), key=lambda i: i[0]):
             wx = srn.get_wx()  # TODO also test wy
@@ -84,7 +84,6 @@ def main_job(param2val, min_probe_freq=10):
         print('partition={:>2}/{:>2} | before-training partition pp={:>5}\n'.format(
             part_id, srn.num_partitions, int(pp)))
         # train
-        seqs_in_part = [list(seq) for seq in itertoolz.partition_all(params.mb_size, part)]
         print('num mb_size sequences in partition={}'.format(len(seqs_in_part)))
         for iteration in range(params.num_iterations):
 
