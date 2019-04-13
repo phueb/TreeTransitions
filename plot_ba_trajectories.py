@@ -18,6 +18,7 @@ TITLE_FONTSIZE = 10
 default_dict = MatchParams.__dict__.copy()
 MatchParams.legals_distribution = ['uniform', 'triangular']
 MatchParams.num_partitions = [2]
+MatchParams.truncate = [0.2]
 
 
 def gen_param_ps(param2requested, param2default):
@@ -55,6 +56,7 @@ def make_num_cats2bas(param_p):
         with results_p.open('rb') as f:
             df = pd.read_csv(f)
         dfs.append(df)
+    print('Combining results from {} files'.format(len(dfs)))
     #
     concatenated = pd.concat(dfs, axis=0)
     df = concatenated.groupby(concatenated.index).mean()
@@ -66,7 +68,7 @@ def make_num_cats2bas(param_p):
 def plot_ba_trajs(d1, d2, title):
     fig, ax = plt.subplots(figsize=FIGSIZE, dpi=None)
     plt.title(title, fontsize=TITLE_FONTSIZE)
-    ax.set_xlabel('Epoch')
+    ax.set_xlabel('Partition')
     ax.set_ylabel('Balanced Accuracy')
     ax.spines['right'].set_visible(False)
     ax.spines['top'].set_visible(False)

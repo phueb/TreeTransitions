@@ -63,7 +63,7 @@ def main_job(param2val, min_probe_freq=10):
         print()
         num_cats2max_ba[num_cats] = ba2
 
-    # train once
+    # train loop
     srn = RNN(num_vocab, params)  # num_seqs_in_batch must be 1 to ensure mb_size is as specified in params
     num_cats2bas = {num_cats: [] for num_cats in params.num_cats_list}
     part_size = params.num_tokens // params.num_partitions
@@ -71,24 +71,22 @@ def main_job(param2val, min_probe_freq=10):
     for part in itertoolz.partition_all(part_size, token_ids):
         part_id += 1
         seqs_in_part = [list(seq) for seq in itertoolz.partition_all(params.mb_size, part)]
+        print('num mb_size sequences in partition={}'.format(len(seqs_in_part)))
         # perplexity
         pp = srn.calc_seqs_pp(seqs_in_part)
-        # ba
-        for num_cats, (probes, probe2cat) in sorted(num_cats2probes_data.items(), key=lambda i: i[0]):
-            wx = srn.get_wx()  # TODO also test wy
-            p_acts = np.asarray([wx[word2id[p], :] for p in probes])
-            ba = calc_ba(cosine_similarity(p_acts), probes, probe2cat)
-            num_cats2bas[num_cats].append(ba)
-            print('partition={:>2}/{:>2} | ba={:.3f} num_cats={}'.format(part_id, srn.num_partitions, ba, num_cats))
-        #
-        print('partition={:>2}/{:>2} | before-training partition pp={:>5}\n'.format(
-            part_id, srn.num_partitions, int(pp)))
-        # train
-        print('num mb_size sequences in partition={}'.format(len(seqs_in_part)))
+        # iterations
         for iteration in range(params.num_iterations):
-
-            # TODO test train on local iterations
-
+            # ba
+            for num_cats, (probes, probe2cat) in sorted(num_cats2probes_data.items(), key=lambda i: i[0]):
+                wx = srn.get_wx()  # TODO also test wy
+                p_acts = np.asarray([wx[word2id[p], :] for p in probes])
+                ba = calc_ba(cosine_similarity(p_acts), probes, probe2cat)
+                num_cats2bas[num_cats].append(ba)
+                print('partition={:>2}/{:>2} | ba={:.3f} num_cats={}'.format(part_id, srn.num_partitions, ba, num_cats))
+            #
+            print('partition={:>2}/{:>2} | before-training partition pp={:>5}\n'.format(
+                part_id, srn.num_partitions, int(pp)))
+            # train
             srn.train_partition(seqs_in_part, verbose=False)  # a seq is a list of mb_size token_ids
 
     #  save results to disk
