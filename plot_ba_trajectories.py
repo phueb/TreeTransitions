@@ -16,9 +16,9 @@ TITLE_FONTSIZE = 10
 
 
 default_dict = MatchParams.__dict__.copy()
-MatchParams.legals_distribution = ['uniform', 'triangular']
+MatchParams.legals_distribution = ['triangular']
 MatchParams.num_partitions = [2]
-MatchParams.truncate = [0.2]
+MatchParams.truncate = [0.2, 0.4, 0.6, 0.8, 1.0]
 
 
 def gen_param_ps(param2requested, param2default):
@@ -48,7 +48,7 @@ def make_title(param_p):
     return res
 
 
-def make_num_cats2bas(param_p):
+def get_results_dfs(param_p):
     results_ps = list(param_p.glob('*num*/results.csv'))
     print('Found {} results files'.format(len(results_ps)))
     dfs = []
@@ -56,8 +56,11 @@ def make_num_cats2bas(param_p):
         with results_p.open('rb') as f:
             df = pd.read_csv(f)
         dfs.append(df)
+    return dfs
+
+
+def make_num_cats2bas(dfs):
     print('Combining results from {} files'.format(len(dfs)))
-    #
     concatenated = pd.concat(dfs, axis=0)
     df = concatenated.groupby(concatenated.index).mean()
     res = df.to_dict(orient='list')
@@ -68,7 +71,7 @@ def make_num_cats2bas(param_p):
 def plot_ba_trajs(d1, d2, title):
     fig, ax = plt.subplots(figsize=FIGSIZE, dpi=None)
     plt.title(title, fontsize=TITLE_FONTSIZE)
-    ax.set_xlabel('Partition')
+    ax.set_xlabel('Iteration')
     ax.set_ylabel('Balanced Accuracy')
     ax.spines['right'].set_visible(False)
     ax.spines['top'].set_visible(False)
@@ -92,8 +95,9 @@ def plot_ba_trajs(d1, d2, title):
 # plot
 summary_data = []
 for param_p, label in gen_param_ps(MatchParams, default_dict):
-    num_cats2bas = make_num_cats2bas(param_p)
+    results_dfs = get_results_dfs(param_p)
+    num_cats2bas = make_num_cats2bas(results_dfs)
     #
     num_cats2max_ba = None  # TODO
     title = make_title(param_p)
-    plot_ba_trajs(num_cats2bas, num_cats2max_ba, title)
+    plot_ba_trajs(num_cats2bas, num_cats2max_ba, title + '\nn={}'.format(len(results_dfs)))

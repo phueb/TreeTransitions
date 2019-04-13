@@ -69,6 +69,8 @@ def main_job(param2val, min_probe_freq=10):
     part_size = params.num_tokens // params.num_partitions
     part_id = 0
     for part in itertoolz.partition_all(part_size, token_ids):
+        if len(part) != part_size:
+            continue
         part_id += 1
         seqs_in_part = [list(seq) for seq in itertoolz.partition_all(params.mb_size, part)]
         print('num mb_size sequences in partition={}'.format(len(seqs_in_part)))
