@@ -19,13 +19,12 @@ class Params:
     structure_ngram_size = [1]  # TODO manipulate this - or concatenate all structures?
     # rnn
     num_iterations = [20]
-    num_partitions = [256]
+    num_partitions = [2]
     rnn_type =['srn']
     bptt = max_ngram_size
     mb_size = [64]
     learning_rate = [0.001]  # 0.01 is too fast
     num_hiddens = [512]
-    num_pp_seqs = [10]  # number of documents to calc perplexity for
     optimization = ['adagrad']
 
 
@@ -43,11 +42,10 @@ class DefaultParams:
     structure_ngram_size = [1]
     # rnn
     num_iterations = [20]
-    num_partitions = [256]
+    num_partitions = [2]
     rnn_type =['srn']
     bptt = max_ngram_size
     mb_size = [64]
     learning_rate = [0.001]  # 0.01 is too fast
     num_hiddens = [512]
-    num_pp_seqs = [10]  # number of documents to calc perplexity for
     optimization = ['adagrad']

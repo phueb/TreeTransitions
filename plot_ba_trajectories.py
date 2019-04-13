@@ -16,8 +16,8 @@ TITLE_FONTSIZE = 10
 
 
 default_dict = MatchParams.__dict__.copy()
-MatchParams.legals_distribution = ['triangular']
-MatchParams.num_partitions = [20]
+MatchParams.legals_distribution = ['uniform', 'triangular']
+MatchParams.num_partitions = [256]
 
 
 def gen_param_ps(param2requested, param2default):
@@ -26,7 +26,7 @@ def gen_param_ps(param2requested, param2default):
     for param_p in config.RemoteDirs.runs.glob('param_*'):
         print('Checking {}...'.format(param_p))
         with (param_p / 'param2val.yaml').open('r') as f:
-            param2val = yaml.load(f)
+            param2val = yaml.load(f, Loader=yaml.FullLoader)
         param2val = param2val.copy()
         match_param2vals = list_all_param2vals(param2requested, add_names=False)
         del param2val['param_name']
@@ -39,7 +39,7 @@ def gen_param_ps(param2requested, param2default):
 
 def make_title(param_p):
     with (param_p / 'param2val.yaml').open('r') as f:
-        param2val = yaml.load(f)
+        param2val = yaml.load(f, Loader=yaml.FullLoader)
     #
     res = ''
     for param, val in sorted(param2val.items(), key=lambda i: i[0]):
