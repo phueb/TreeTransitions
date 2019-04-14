@@ -11,8 +11,8 @@ class Params:
     max_ngram_size = [1]
     num_descendants = [2]  # 2
     num_levels = [12]  # 12
-    mutation_prob = [0.2]  # 0.2
-    truncate = [0.2, 0.4, 0.6, 0.8, 1.0]
+    mutation_prob = [0.1]  # 0.2
+    truncate = [0.6, 0.8, 1.0]
     legals_distribution = ['uniform', 'triangular']
     parent_count = [4096]  # exact size of single parent cluster
     num_cats_list = [[2, 4, 8, 16, 32]]
@@ -34,8 +34,8 @@ class DefaultParams:
     max_ngram_size = [1]
     num_descendants = [2]
     num_levels = [12]
-    mutation_prob = [0.2]
-    truncate = [0.2, 0.4, 0.6, 0.8, 1.0]
+    mutation_prob = [0.1]
+    truncate = [0.6, 0.8, 1.0]
     legals_distribution = ['uniform', 'triangular']
     parent_count = [4096]  # exact size of single parent cluster
     num_cats_list = [[2, 4, 8, 16, 32]]

@@ -17,21 +17,6 @@ def generate_tokens_from_zipfian(words, num_tokens, oov='OOV'):  # TODO unused
     return res
 
 
-def sample_from_legals(legals, legals_distribution):
-    num_legals = len(legals)
-    sorted_words = list(sorted(legals))  # need to sort to ensure that rand_id always refers to same word
-    # shape of distribution
-    if legals_distribution == 'uniform':
-        p = None
-    elif legals_distribution == 'triangular':
-        p = np.arange(1, num_legals + 1) / np.sum(np.arange(1, num_legals + 1))
-    else:
-        raise AttributeError('Invalid arg to "legals_distribution".')
-    # sample
-    res = np.random.choice(sorted_words, size=1, p=p).item()
-    return res
-
-
 def get_all_probes_in_tree(vocab, res1, z, node_id):
     """
     # z should be the result of linkage,which returns an array of length n - 1
@@ -130,8 +115,9 @@ def sample_from_hierarchical_diffusion(node0, num_descendants, num_levels, e):
     return nodes
 
 
-def make_chunk(chunk_id, size2word2legals, vocab, num_start, chunk_size, legals_distribution, truncate,
+def make_chunk(chunk_id, size2word2legals, vocab, num_start, chunk_size, legals_distribution,
                random_interval=np.nan):
+    vocab_set = set(vocab)
     tokens_chunk = np.random.choice(vocab, size=num_start).tolist()  # prevents indexError at start
     pbar = pyprind.ProgBar(chunk_size) if chunk_id == 0 else None
     for loc in range(chunk_size):
@@ -143,13 +129,22 @@ def make_chunk(chunk_id, size2word2legals, vocab, num_start, chunk_size, legals_
         # append word which is constrained by hierarchical structure
         else:
             # get words which are legal to come next
-            legals = set(vocab)
+            legals = vocab_set
             for size, word2legals in size2word2legals.items():
                 previous_token = tokens_chunk[-size]
                 legals.intersection_update(word2legals[previous_token])
             # sample from legals
+            num_legals = len(legals)
+            if legals_distribution == 'uniform':
+                p = None
+            elif legals_distribution == 'triangular':
+                tmp = np.arange(1, num_legals + 1)
+                p = tmp / np.sum(tmp)
+            else:
+                raise AttributeError('Invalid arg to "legals_distribution".')
+            #
             try:
-                new_token = sample_from_legals(list(legals), legals_distribution)
+                new_token = np.random.choice(np.sort(list(legals)), size=1, p=p).item()
             except ValueError:  # no legals
                 raise RuntimeError('No legal next word available. Increase mutation_prob')
             # collect
@@ -200,7 +195,7 @@ def make_data(num_tokens, legals_distribution, max_ngram_size=6, num_descendants
     pool = mp.Pool(processes=num_chunks)
     chunk_size = num_tokens // num_chunks
     results = [pool.apply_async(
-        make_chunk, args=(chunk_id, size2word2legals, vocab, max_ngram_size, chunk_size, legals_distribution, truncate))
+        make_chunk, args=(chunk_id, size2word2legals, vocab, max_ngram_size, chunk_size, legals_distribution))
         for chunk_id in range(num_chunks)]
     tokens = []
     print('Creating tokens from hierarchical dependency structure...')

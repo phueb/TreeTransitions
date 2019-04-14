@@ -18,6 +18,9 @@ def main_job(param2val, min_probe_freq=10):
 
     # params
     params = ObjectView(param2val.copy())
+    for k, v in param2val.items():
+        print('{}={}'.format(k, v))
+    print()
 
     # make tokens with hierarchical n-gram structure
     vocab, tokens, ngram2legals_mat = make_data(
