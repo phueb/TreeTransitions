@@ -117,7 +117,6 @@ def sample_from_hierarchical_diffusion(node0, num_descendants, num_levels, e):
 
 def make_chunk(chunk_id, size2word2legals, vocab, num_start, chunk_size, legals_distribution,
                random_interval=np.nan):
-    vocab_set = set(vocab)
     tokens_chunk = np.random.choice(vocab, size=num_start).tolist()  # prevents indexError at start
     pbar = pyprind.ProgBar(chunk_size) if chunk_id == 0 else None
     for loc in range(chunk_size):
@@ -129,7 +128,7 @@ def make_chunk(chunk_id, size2word2legals, vocab, num_start, chunk_size, legals_
         # append word which is constrained by hierarchical structure
         else:
             # get words which are legal to come next
-            legals = vocab_set
+            legals = set(vocab)
             for size, word2legals in size2word2legals.items():
                 previous_token = tokens_chunk[-size]
                 legals.intersection_update(word2legals[previous_token])
