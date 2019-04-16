@@ -152,7 +152,7 @@ def make_chunk(chunk_id, size2word2legals, vocab, num_start, chunk_size, legals_
     return tokens_chunk
 
 
-def make_data(num_tokens, legals_distribution, max_ngram_size=6, num_descendants=2, num_levels=12, e=0.2, truncate=1,
+def make_data(num_tokens, legals_distribution, max_ngram_size, num_descendants, num_levels, e, truncate,
               num_chunks=4):
     """
     generate text by adding one word at a time to a list of words.
