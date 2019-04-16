@@ -34,8 +34,7 @@ def main_job(param2val, min_probe_freq=10):
     print('num_vocab={}'.format(num_vocab))
     print('num types in tokens={}'.format(num_types_in_tokens))
     if not num_types_in_tokens == num_vocab:
-        raise RuntimeError('Not all types ({}/{} were found in tokens.'.format(
-            num_types_in_tokens, num_vocab) + 'Decrease num_levels, increase num_tokens, or increase truncate.')
+        print('Not all types ({}/{} were found in tokens.'.format(num_types_in_tokens, num_vocab))
 
     #
     num_theoretical_legals = num_vocab / (2 ** params.max_ngram_size)

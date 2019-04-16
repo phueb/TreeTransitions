@@ -17,7 +17,7 @@ TITLE_FONTSIZE = 10
 
 default_dict = MatchParams.__dict__.copy()
 MatchParams.legals_distribution = ['uniform', 'triangular']
-MatchParams.num_partitions = [2]
+MatchParams.num_partitions = [1]  # TODO
 MatchParams.truncate = [1.0]
 
 
