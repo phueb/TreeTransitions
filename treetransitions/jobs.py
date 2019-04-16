@@ -44,7 +44,7 @@ def main_job(param2val, min_probe_freq=10):
     num_cats2probes_data = {}
     num_cats2max_ba = {}
     for num_cats in params.num_cats_list:
-        print('Getting {} categories with MIN_COUNT={}...'.format(num_cats, params.parent_count))
+        print('Getting {} categories with parent_count={}...'.format(num_cats, params.parent_count))
         legals_mat = ngram2legals_mat[params.structure_ngram_size]
         probes, probe2cat = make_probe_data(legals_mat, vocab, num_cats, params.parent_count,
                                             plot=False)
