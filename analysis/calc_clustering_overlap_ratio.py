@@ -17,13 +17,13 @@ params.num_tokens = 1 * 10 ** 5
 params.num_levels = 10
 params.e = 0.2
 
-params.truncate = 0.1  # TODO
+params.truncate_list = [0.0, 1.0]
 
 
 # make tokens with hierarchical n-gram structure
 vocab, tokens, ngram2legals_mat = make_data(
     params.num_tokens, params.legals_distribution, params.max_ngram_size,
-    params.num_descendants, params.num_levels, params.mutation_prob, params.truncate)
+    params.num_descendants, params.num_levels, params.mutation_prob, params.truncate_list)
 num_vocab = len(vocab)
 num_types_in_tokens = len(set(tokens))
 word2id = {word: n for n, word in enumerate(vocab)}
@@ -39,8 +39,7 @@ num_cats2probes_data = {}
 num_cats2max_ba = {}
 print('Getting {} categories with parent_count={}...'.format(NUM_CATS, params.parent_count))
 legals_mat = ngram2legals_mat[params.structure_ngram_size]
-probes, probe2cat = make_probe_data(legals_mat, vocab, NUM_CATS, params.parent_count,
-                                    plot=False)
+probes, probe2cat = make_probe_data(legals_mat, vocab, NUM_CATS, params.parent_count, plot=False)
 num_cats2probes_data[NUM_CATS] = (probes, probe2cat)
 c = Counter(tokens)
 for p in probes:
@@ -59,6 +58,7 @@ print()
 
 
 # init
+print('Counting...')
 cats = set(probe2cat.values())
 word2cat2count = {w: {cat: 0 for cat in cats} for w in vocab}
 word2noncat_count = {t: 0 for t in vocab}
@@ -77,30 +77,27 @@ for n, token in enumerate(tokens[1:]):
     #
     word2count[token] += 1
 
-
-
-numerators = []
-denominators = []
+print('Calculating ratios...')
+cat_mean_ratios = []
+cat_var_ratios = []
 for cat in cats:
-    numerator = 1
-    denominator = 1
+    num_after_cats = []
+    num_totals = []
     for word in vocab:
+        num_after_cat = word2cat2count[word][cat]
+        num_total = word2count[word] + 1
+        ratio = num_after_cat / num_total
+        if num_after_cat > 0:  # only interested in words that influence category
+            num_after_cats.append(num_after_cat)
+            num_totals.append(num_total)
+    #
+    ratios = [n/d for n, d in zip(num_after_cats, num_totals)]
+    cat_mean_ratio = np.mean(ratios).round(3)
+    cat_var_ratio = np.var(ratios).round(5)
+    #
+    cat_mean_ratios.append(cat_mean_ratio)
+    cat_var_ratios.append(cat_var_ratio)
+    print(cat, cat_mean_ratio, cat_var_ratio, len(num_totals), 'max={}'.format(np.max(num_after_cats)))
 
-        count_after_cat = word2cat2count[word][cat]
-        count_after_noncat = word2count[word] - count_after_cat  # TODO
-        # count_after_noncat = np.sum([word2cat2count[word][cat] for cat in cats])
 
-        numerator += count_after_cat
-        denominator += count_after_noncat
-        # print(cat, word, count_after_cat, count_after_noncat, numerator / denominator)
-
-    ratio = numerator / denominator
-    print(cat, ratio)
-
-    numerators.append(numerator)
-    denominators.append(denominator)
-
-
-print(np.mean(numerators))
-print(np.mean(denominators))
-print(np.mean(denominators) / np.mean(numerators))  # TODO these values don't vary with truncate - that's good - semantic structure isn't affect by truncate
+print(np.mean(cat_mean_ratios), np.mean(cat_var_ratios))

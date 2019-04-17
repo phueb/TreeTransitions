@@ -25,7 +25,7 @@ def main_job(param2val, min_probe_freq=10):
     # make tokens with hierarchical n-gram structure
     vocab, tokens, ngram2legals_mat = make_data(
         params.num_tokens, params.legals_distribution, params.max_ngram_size,
-        params.num_descendants, params.num_levels, params.mutation_prob, params.truncate)
+        params.num_descendants, params.num_levels, params.mutation_prob, params.truncate_list)
     num_vocab = len(vocab)
     num_types_in_tokens = len(set(tokens))
     word2id = {word: n for n, word in enumerate(vocab)}

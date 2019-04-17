@@ -11,6 +11,9 @@ from scipy.spatial.distance import pdist
 from matplotlib.colors import to_hex
 
 
+NUM_PROCESSES = 4
+
+
 def generate_tokens_from_zipfian(words, num_tokens, oov='OOV'):  # TODO unused
     num_vocab = len(words)
     res = [words[i] if i < num_vocab else oov for i in np.random.zipf(2, num_tokens)]
@@ -115,10 +118,15 @@ def sample_from_hierarchical_diffusion(node0, num_descendants, num_levels, e):
     return nodes
 
 
-def make_chunk(chunk_id, size2word2legals, vocab, num_start, chunk_size, legals_distribution,
+def make_chunk(chunk_id, size2word2legals, vocab, num_start, chunk_size, legals_distribution, truncate,
                random_interval=np.nan):
+
+    # TODO test
+    print('Making tokens chunk with truncate={}'.format(truncate)) if chunk_id % NUM_PROCESSES == 0 else None
+
+    #
     tokens_chunk = np.random.choice(vocab, size=num_start).tolist()  # prevents indexError at start
-    pbar = pyprind.ProgBar(chunk_size) if chunk_id == 0 else None
+    pbar = pyprind.ProgBar(chunk_size) if chunk_id % NUM_PROCESSES == 0 else None
     for loc in range(chunk_size):
         # append random word to break structure into pseudo-sentences
         if loc % random_interval == 0:
@@ -134,26 +142,27 @@ def make_chunk(chunk_id, size2word2legals, vocab, num_start, chunk_size, legals_
                 legals.intersection_update(word2legals[previous_token])
             # sample from legals
             num_legals = len(legals)
+            num_truncated = int(num_legals * truncate)
             if legals_distribution == 'uniform':
                 p = None
             elif legals_distribution == 'triangular':
-                tmp = np.arange(1, num_legals + 1)
+                tmp = np.arange(1, num_truncated + 1)
                 p = tmp / np.sum(tmp)
             else:
                 raise AttributeError('Invalid arg to "legals_distribution".')
             #
             try:
-                new_token = np.random.choice(np.sort(list(legals)), size=1, p=p).item()
+                new_token = np.random.choice(np.sort(list(legals))[:num_truncated], size=1, p=p).item()
             except ValueError:  # no legals
                 raise RuntimeError('No legal next word available. Increase mutation_prob')
             # collect
             tokens_chunk.append(new_token)
-        pbar.update() if chunk_id == 0 else None
+        pbar.update() if chunk_id % NUM_PROCESSES == 0 else None
     return tokens_chunk
 
 
-def make_data(num_tokens, legals_distribution, max_ngram_size, num_descendants, num_levels, e, truncate,
-              num_chunks=4):
+def make_data(num_tokens, legals_distribution, max_ngram_size, num_descendants, num_levels, e,
+              truncate_list, num_chunks=32):
     """
     generate text by adding one word at a time to a list of words.
     each word is constrained by the legals matrices - which are hierarchical -
@@ -186,15 +195,18 @@ def make_data(num_tokens, legals_distribution, max_ngram_size, num_descendants, 
         legals_mat = ngram2slegals_mat[ngram_size]
         word2legals = {}
         for col_word, col in zip(vocab, legals_mat.T):  # col contains information about which row_words come next
-            all_legals = [w for w, val in zip(vocab, col) if val == word2node0[w]]
-            num_truncated = int(len(all_legals) * truncate)
-            word2legals[col_word] = np.random.choice(all_legals, size=num_truncated, replace=False)
+            legals = [w for w, val in zip(vocab, col) if val == word2node0[w]]
+            word2legals[col_word] = legals
         size2word2legals[ngram_size] = word2legals
-    # get one token at a time
-    pool = mp.Pool(processes=num_chunks)
+    # make tokens - in parallel
+    pool = mp.Pool(processes=NUM_PROCESSES)
+    min_truncate, max_truncate = truncate_list
+    truncate_steps = np.linspace(min_truncate, max_truncate, num_chunks + 2)[1:-1]
     chunk_size = num_tokens // num_chunks
+    ld = legals_distribution
     results = [pool.apply_async(
-        make_chunk, args=(chunk_id, size2word2legals, vocab, max_ngram_size, chunk_size, legals_distribution))
+        make_chunk,
+        args=(chunk_id, size2word2legals, vocab, max_ngram_size, chunk_size, ld, truncate_steps[chunk_id]))
         for chunk_id in range(num_chunks)]
     tokens = []
     print('Creating tokens from hierarchical dependency structure...')
