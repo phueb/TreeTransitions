@@ -120,10 +120,7 @@ def sample_from_hierarchical_diffusion(node0, num_descendants, num_levels, e):
 
 def make_chunk(chunk_id, size2word2legals, vocab, num_start, chunk_size, legals_distribution, truncate,
                random_interval=np.nan):
-
-    # TODO test
-    print('Making tokens chunk with truncate={}'.format(truncate)) if chunk_id % NUM_PROCESSES == 0 else None
-
+    print('\nMaking tokens chunk with truncate={}'.format(truncate)) if chunk_id % NUM_PROCESSES == 0 else None
     #
     tokens_chunk = np.random.choice(vocab, size=num_start).tolist()  # prevents indexError at start
     pbar = pyprind.ProgBar(chunk_size) if chunk_id % NUM_PROCESSES == 0 else None
@@ -136,23 +133,25 @@ def make_chunk(chunk_id, size2word2legals, vocab, num_start, chunk_size, legals_
         # append word which is constrained by hierarchical structure
         else:
             # get words which are legal to come next
-            legals = set(vocab)
+            legals_set = set(vocab)
             for size, word2legals in size2word2legals.items():
                 previous_token = tokens_chunk[-size]
-                legals.intersection_update(word2legals[previous_token])
+                legals = word2legals[previous_token]
+                num_legals = len(legals)
+                num_truncated = int(num_legals * truncate)
+                legals_set.intersection_update(legals[:num_truncated])  # TODO test num_truncated
             # sample from legals
-            num_legals = len(legals)
-            num_truncated = int(num_legals * truncate)
+
             if legals_distribution == 'uniform':
                 p = None
-            elif legals_distribution == 'triangular':
-                tmp = np.arange(1, num_truncated + 1)
+            elif legals_distribution == 'triangular':  # TODO this requires that legals_set is sorted - but doing so across all words prevents learning
+                tmp = np.arange(1, len(legals_set) + 1)
                 p = tmp / np.sum(tmp)
             else:
                 raise AttributeError('Invalid arg to "legals_distribution".')
             #
             try:
-                new_token = np.random.choice(np.sort(list(legals))[:num_truncated], size=1, p=p).item()
+                new_token = np.random.choice(list(legals_set), size=1, p=p).item()
             except ValueError:  # no legals
                 raise RuntimeError('No legal next word available. Increase mutation_prob')
             # collect
@@ -196,7 +195,7 @@ def make_data(num_tokens, legals_distribution, max_ngram_size, num_descendants, 
         word2legals = {}
         for col_word, col in zip(vocab, legals_mat.T):  # col contains information about which row_words come next
             legals = [w for w, val in zip(vocab, col) if val == word2node0[w]]
-            word2legals[col_word] = legals
+            word2legals[col_word] = np.random.permutation(legals)  # to ensure truncation affects each word differently
         size2word2legals[ngram_size] = word2legals
     # make tokens - in parallel
     pool = mp.Pool(processes=NUM_PROCESSES)
@@ -204,6 +203,12 @@ def make_data(num_tokens, legals_distribution, max_ngram_size, num_descendants, 
     truncate_steps = np.linspace(min_truncate, max_truncate, num_chunks + 2)[1:-1]
     chunk_size = num_tokens // num_chunks
     ld = legals_distribution
+
+
+    # TODO debugging
+    # make_chunk(0, size2word2legals, vocab, max_ngram_size, chunk_size, ld, truncate_steps[0])
+    # raise SystemError
+
     results = [pool.apply_async(
         make_chunk,
         args=(chunk_id, size2word2legals, vocab, max_ngram_size, chunk_size, ld, truncate_steps[chunk_id]))
