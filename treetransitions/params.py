@@ -8,7 +8,7 @@ class ObjectView(object):
 class Params:
     # input data
     truncate_num_cats = [32]  # TODO test
-    truncate_list = [[1.0, 0.5]]
+    truncate_list = [[1.0, 0.5], [0.5, 1.0]]
     num_tokens = [5 * 10 ** 6]
     max_ngram_size = [1]
     num_descendants = [2]  # 2
@@ -19,7 +19,7 @@ class Params:
     structure_ngram_size = [1]
     # rnn
     num_iterations = [10]
-    num_partitions = [1]
+    num_partitions = [2]
     rnn_type =['srn']
     bptt = max_ngram_size
     mb_size = [64]
