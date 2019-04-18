@@ -53,7 +53,7 @@ def main_job(param2val, min_probe_freq=10):
 
     # sample tokens
     tokens = make_tokens(vocab, size2word2legals, num_cats2word2sorted_legals[params.truncate_num_cats],
-                         params.num_tokens, params.legals_distribution, params.max_ngram_size, params.truncate_list)
+                         params.num_tokens, params.max_ngram_size, params.truncate_list)
     num_vocab = len(vocab)
     num_types_in_tokens = len(set(tokens))
     word2id = {word: n for n, word in enumerate(vocab)}

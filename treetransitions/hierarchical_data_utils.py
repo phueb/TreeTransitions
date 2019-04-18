@@ -131,8 +131,7 @@ def sample_from_hierarchical_diffusion(node0, num_descendants, num_levels, e):
     return nodes
 
 
-def make_chunk(chunk_id, size2word2legals, word2sorted_legals, vocab, num_start, chunk_size,
-               legals_distribution, truncate,
+def make_chunk(chunk_id, size2word2legals, word2sorted_legals, vocab, num_start, chunk_size, truncate,
                random_interval=np.nan):
     print('\nMaking tokens chunk with truncate={}'.format(truncate)) if chunk_id % NUM_PROCESSES == 0 else None
     #
@@ -203,7 +202,7 @@ def make_legal_mats(vocab, num_descendants, num_levels, mutation_prob, max_ngram
 
 
 def make_tokens(vocab, size2word2legals, word2sorted_legals,
-                num_tokens, legals_distribution, max_ngram_size, truncate_list, num_chunks=32):
+                num_tokens, max_ngram_size, truncate_list, num_chunks=32):
     """
     generate text by adding one word at a time to a list of words.
     each word is constrained by the legals matrices - which are hierarchical -
@@ -219,11 +218,10 @@ def make_tokens(vocab, size2word2legals, word2sorted_legals,
     min_truncate, max_truncate = truncate_list
     truncate_steps = np.linspace(min_truncate, max_truncate, num_chunks + 2)[1:-1]
     chunk_size = num_tokens // num_chunks
-    ld = legals_distribution
     results = [pool.apply_async(
         make_chunk,
         args=(chunk_id, size2word2legals, word2sorted_legals, vocab, max_ngram_size,
-              chunk_size, ld, truncate_steps[chunk_id]))
+              chunk_size, truncate_steps[chunk_id]))
         for chunk_id in range(num_chunks)]
     tokens = []
     print('Creating tokens from hierarchical dependency structure...')

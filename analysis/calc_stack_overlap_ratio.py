@@ -56,7 +56,7 @@ print('input-data col-wise ba={:.3f}'.format(ba2))
 print()
 
 # sample tokens
-tokens = make_tokens(vocab, size2word2legals, word2sorted_legals, params.num_tokens, params.legals_distribution,
+tokens = make_tokens(vocab, size2word2legals, word2sorted_legals, params.num_tokens,
                      params.max_ngram_size, params.truncate_list)
 num_vocab = len(vocab)
 num_types_in_tokens = len(set(tokens))
