@@ -75,7 +75,6 @@ def make_probe_data(vocab, word2id, legals_mat, num_cats, parent_count,
         assert len(cat_probes) == num_members
         probe2cat.update({p: cat_id for p in cat_probes})
         probes.extend(cat_probes)
-        print('cat_id={} num probes in cat={}'.format(cat_id, len(cat_probes)))
         cat_probes_list.append(cat_probes)
         for p in cat_probes:
             probe2color[p] = to_hex(cmap(cat_id))
@@ -159,16 +158,8 @@ def make_chunk(chunk_id, size2word2legals, word2sorted_legals, vocab, num_start,
                 legals_set.intersection_update(legals)
                 legals_set.intersection_update(sorted_legals[-num_truncated:])  # truncate from end TODO test
             # sample from legals
-            if legals_distribution == 'uniform':
-                p = None
-            elif legals_distribution == 'triangular':
-                tmp = np.arange(1, len(legals_set) + 1)
-                p = tmp / np.sum(tmp)
-            else:
-                raise AttributeError('Invalid arg to "legals_distribution".')
-            #
             try:
-                new_token = np.random.choice(list(legals_set), size=1, p=p).item()
+                new_token = np.random.choice(list(legals_set), size=1, p=None).item()
             except ValueError:  # no legals
                 raise RuntimeError('No legal next word available. Increase mutation_prob')
             # collect
