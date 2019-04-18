@@ -21,21 +21,46 @@ but in this case, "cream" just occurs frequently following a single member of th
 this would inflate the s-o ratio.
 """
 
-
+TRUNCATE_SIZE = 1
 NUM_CATS = 32
 
 
 params = ObjectView(list_all_param2vals(DefaultParams, update_d={'param_name': 'test', 'job_name': 'test'})[0])
-params.parent_count = 512
+params.parent_count = 1024
 params.num_tokens = 1 * 10 ** 5
 params.num_levels = 10
 params.e = 0.2
+params.truncate_num_cats = NUM_CATS
 
-params.truncate_list = [0.5, 0.6]
+params.truncate_list = [0.8, 0.9]
 
 vocab, word2id = make_vocab(params.num_descendants, params.num_levels)
 
-raise SystemExit('debugging')
+# make underlying hierarchical structure
+size2word2legals, ngram2legals_mat = make_legal_mats(
+    vocab, params.num_descendants, params.num_levels, params.mutation_prob, params.max_ngram_size)
+
+# probes_data
+num_cats2word2sorted_legals = {}
+print('Getting {} categories with parent_count={}...'.format(NUM_CATS, params.parent_count))
+legals_mat = ngram2legals_mat[params.structure_ngram_size]
+probes, probe2cat, word2sorted_legals = make_probe_data(
+    vocab, size2word2legals[TRUNCATE_SIZE], legals_mat, NUM_CATS, params.parent_count, plot=False)
+print('Collected {} probes'.format(len(probes)))
+# check probe sim
+probe_acts1 = legals_mat[[word2id[p] for p in probes], :]
+ba1 = calc_ba(cosine_similarity(probe_acts1), probes, probe2cat)
+probe_acts2 = legals_mat[:, [word2id[p] for p in probes]].T
+ba2 = calc_ba(cosine_similarity(probe_acts2), probes, probe2cat)
+print('input-data row-wise ba={:.3f}'.format(ba1))
+print('input-data col-wise ba={:.3f}'.format(ba2))
+print()
+num_cats2word2sorted_legals[NUM_CATS] = word2sorted_legals
+
+
+# sample tokens
+tokens = make_tokens(vocab, size2word2legals, num_cats2word2sorted_legals[params.truncate_num_cats],
+                     params.num_tokens, params.max_ngram_size, params.truncate_list)
 
 # init
 print('Counting...')

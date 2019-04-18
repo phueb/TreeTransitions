@@ -163,6 +163,10 @@ def make_chunk(chunk_id, size2word2legals, word2sorted_legals, vocab, num_start,
                 #
                 num_truncated = int(len(sorted_legals) * truncate)
                 legals_set.intersection_update(legals)
+
+                # TODO rather than truncating, implement indexing a window in sorted_legals?
+                # TODO this window would slide as training progresses
+
                 legals_set.intersection_update(sorted_legals[-num_truncated:])  # truncate from end TODO test
             # sample from legals
             try:
@@ -193,9 +197,6 @@ def make_legal_mats(vocab, num_descendants, num_levels, mutation_prob, max_ngram
     for ngram_size in ngram_sizes:
         for row_id, word in enumerate(vocab):
             node0 = -1 if np.random.binomial(n=1, p=0.5) else 1
-
-            # TODO remove node0 an word2node0?
-
             word2node0[word] = node0
             ngram2legals_mat[ngram_size][row_id, :] = sample_from_hierarchical_diffusion(
                 node0, num_descendants, num_levels, mutation_prob)
@@ -207,14 +208,8 @@ def make_legal_mats(vocab, num_descendants, num_levels, mutation_prob, max_ngram
         legals_mat = ngram2legals_mat[ngram_size]
         word2legals = {}
         for col_word, col in zip(vocab, legals_mat.T):  # col contains information about which row_words come next
-
-            # legals = [w for w, val in zip(vocab, col) if val == word2node0[w]]
-
-            # TODO test if word2node0 is needed
-            legals = [w for w, val in zip(vocab, col) if val == 1]
-
-
-            word2legals[col_word] = np.random.permutation(legals).tolist()  # to ensure truncation affects each word differently
+            legals = [w for w, val in zip(vocab, col) if val == word2node0[w]]  # word2node0 is critical for learning
+            word2legals[col_word] = legals
         size2word2legals[ngram_size] = word2legals
     return size2word2legals, ngram2legals_mat
 
