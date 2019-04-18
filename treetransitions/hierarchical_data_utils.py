@@ -81,7 +81,6 @@ def make_probe_data(vocab, word2id, legals_mat, num_cats, parent_count,
             probe2color[p] = to_hex(cmap(cat_id))
         #  get most diagnostic legals for cat
         cols = legals_mat[:, [word2id[p] for p in cat_probes]]
-        print(cols.shape)
         cat_sorted_legal_ids = np.argsort(cols.sum(axis=1))  # sorted by lowest to highest cat diagnostic-ity
         cat2sorted_legals[cat_id] = [vocab[i] for i in cat_sorted_legal_ids]  # typically almost as large as vocab
     # convert cat2sorted_legals to word2sorted_legals
@@ -93,7 +92,7 @@ def make_probe_data(vocab, word2id, legals_mat, num_cats, parent_count,
             cat = probe2cat[word]
             word2sorted_legals[word] = cat2sorted_legals[cat]
         else:
-            word2sorted_legals[word] = non_cat_sorted_legals
+            word2sorted_legals[word] = non_cat_sorted_legals  # careful: sorted in ascending order - truncate from end
     #
     if plot:
 
@@ -158,7 +157,7 @@ def make_chunk(chunk_id, size2word2legals, word2sorted_legals, vocab, num_start,
                 legals = word2legals[previous_token]
                 #
                 legals_set.intersection_update(legals)
-                legals_set.intersection_update(sorted_legals[:num_truncated])  # TODO test
+                legals_set.intersection_update(sorted_legals[-num_truncated:])  # truncate from end TODO test
             # sample from legals
             if legals_distribution == 'uniform':
                 p = None
