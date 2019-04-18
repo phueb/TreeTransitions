@@ -32,10 +32,11 @@ def main_job(param2val, min_probe_freq=10):
     # probes_data
     num_cats2probes_data = {}
     num_cats2max_ba = {}
+    num_cats2word2sorted_legals = {}
     for num_cats in params.num_cats_list:
         print('Getting {} categories with parent_count={}...'.format(num_cats, params.parent_count))
         legals_mat = ngram2legals_mat[params.structure_ngram_size]
-        probes, probe2cat, cat2sorted_legals = make_probe_data(
+        probes, probe2cat, word2sorted_legals = make_probe_data(
             vocab, word2id, legals_mat, num_cats, params.parent_count, plot=False)
         num_cats2probes_data[num_cats] = (probes, probe2cat)
         print('Collected {} probes'.format(len(probes)))
@@ -48,9 +49,10 @@ def main_job(param2val, min_probe_freq=10):
         print('input-data col-wise ba={:.3f}'.format(ba2))
         print()
         num_cats2max_ba[num_cats] = ba2
+        num_cats2word2sorted_legals[num_cats] = word2sorted_legals
 
     # sample tokens
-    tokens = make_tokens(vocab, size2word2legals, cat2sorted_legals,
+    tokens = make_tokens(vocab, size2word2legals, num_cats2word2sorted_legals[params.truncate_num_cats],
                          params.num_tokens, params.legals_distribution, params.max_ngram_size, params.truncate_list)
     num_vocab = len(vocab)
     num_types_in_tokens = len(set(tokens))

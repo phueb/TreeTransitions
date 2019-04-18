@@ -7,7 +7,8 @@ class ObjectView(object):
 
 class Params:
     # input data
-    truncate_list = [[0.5, 1.0], [1.0, 0.5]]  # TODO test
+    truncate_num_cats = [32]  # TODO test
+    truncate_list = [[0.5, 1.0], [1.0, 0.5]]
     num_tokens = [5 * 10 ** 6]
     max_ngram_size = [1]
     num_descendants = [2]  # 2
@@ -30,7 +31,8 @@ class Params:
 
 class DefaultParams:
     # input data
-    truncate_list = [[0.5, 1.0], [1.0, 0.5]]  # TODO test
+    truncate_num_cats = [32]  # TODO test
+    truncate_list = [[0.5, 1.0], [1.0, 0.5]]
     num_tokens = [5 * 10 ** 6]
     max_ngram_size = [1]
     num_descendants = [2]

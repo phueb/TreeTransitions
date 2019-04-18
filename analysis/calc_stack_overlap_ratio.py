@@ -1,11 +1,25 @@
 from sklearn.metrics.pairwise import cosine_similarity
-from collections import Counter
 import numpy as np
 
 from treetransitions.hierarchical_data_utils import make_tokens, make_probe_data, calc_ba, make_vocab, make_legal_mats
 from treetransitions.params import DefaultParams, ObjectView
 
 from ludwigcluster.utils import list_all_param2vals
+
+"""
+the stack-overlap ratio is a ratio of two counts: stack and overlap.
+for each category i,
+for each word j,
+define stack as the number of types the word j follows members of the category i,
+define overlap as the total number of times word j occurs in the input
+
+note: this ratio is only informative using toy data where each legal has the same chance of occurring after
+any vocab word. if, for example "cream" followed "ice" frequently, this would increase "stack", 
+but this is misleading because "cream" might not follow other dessert words.
+"stack" is supposed to be sensitive to the extent to which legals are shared across cat members,
+but in this case, "cream" just occurs frequently following a single member of the category.
+this would inflate the s-o ratio.
+"""
 
 
 NUM_CATS = 32
@@ -17,7 +31,7 @@ params.num_tokens = 1 * 10 ** 5
 params.num_levels = 10
 params.e = 0.2
 
-params.truncate_list = [0.0, 1.0]
+params.truncate_list = [0.8, 0.9]
 
 vocab, word2id = make_vocab(params.num_descendants, params.num_levels)
 
@@ -29,7 +43,7 @@ size2word2legals, ngram2legals_mat = make_legal_mats(
 num_cats2max_ba = {}
 print('Getting {} categories with parent_count={}...'.format(NUM_CATS, params.parent_count))
 legals_mat = ngram2legals_mat[params.structure_ngram_size]
-probes, probe2cat, cat2sorted_legals = make_probe_data(
+probes, probe2cat, word2sorted_legals = make_probe_data(
     vocab, word2id, legals_mat, NUM_CATS, params.parent_count, plot=False)
 print('Collected {} probes'.format(len(probes)))
 # check probe sim
@@ -42,7 +56,7 @@ print('input-data col-wise ba={:.3f}'.format(ba2))
 print()
 
 # sample tokens
-tokens = make_tokens(vocab, size2word2legals, cat2sorted_legals, params.num_tokens, params.legals_distribution,
+tokens = make_tokens(vocab, size2word2legals, word2sorted_legals, params.num_tokens, params.legals_distribution,
                      params.max_ngram_size, params.truncate_list)
 num_vocab = len(vocab)
 num_types_in_tokens = len(set(tokens))
@@ -76,12 +90,12 @@ for n, token in enumerate(tokens[1:]):
     #
     word2count[token] += 1
 
-print('Calculating ratios...')
+print('Calculating stack-overlap ratios...')
 cat_mean_ratios = []
 cat_var_ratios = []
 for cat in cats:
-    num_after_cats = []
-    num_totals = []
+    num_after_cats = []  # "stack"
+    num_totals = []  # "overlap"
     for word in vocab:
         num_after_cat = word2cat2count[word][cat]
         num_total = word2count[word] + 1
@@ -90,7 +104,7 @@ for cat in cats:
             num_after_cats.append(num_after_cat)
             num_totals.append(num_total)
     #
-    ratios = [n/d for n, d in zip(num_after_cats, num_totals)]
+    ratios = [stack / overlap for stack, overlap in zip(num_after_cats, num_totals)]
     cat_mean_ratio = np.mean(ratios).round(3)
     cat_var_ratio = np.var(ratios).round(5)
     #

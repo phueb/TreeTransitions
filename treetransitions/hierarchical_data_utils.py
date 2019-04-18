@@ -83,8 +83,17 @@ def make_probe_data(vocab, word2id, legals_mat, num_cats, parent_count,
         cols = legals_mat[:, [word2id[p] for p in cat_probes]]
         print(cols.shape)
         cat_sorted_legal_ids = np.argsort(cols.sum(axis=1))  # sorted by lowest to highest cat diagnostic-ity
-        cat2sorted_legals[cat_id] = [vocab[i] for i in cat_sorted_legal_ids]
-
+        cat2sorted_legals[cat_id] = [vocab[i] for i in cat_sorted_legal_ids]  # typically almost as large as vocab
+    # convert cat2sorted_legals to word2sorted_legals
+    non_cat_sorted_legal_ids = np.argsort(legals_mat.sum(axis=1))
+    non_cat_sorted_legals = [vocab[i] for i in non_cat_sorted_legal_ids]
+    word2sorted_legals = {}
+    for word in vocab:
+        if word in probes:
+            cat = probe2cat[word]
+            word2sorted_legals[word] = cat2sorted_legals[cat]
+        else:
+            word2sorted_legals[word] = non_cat_sorted_legals
     #
     if plot:
 
@@ -110,7 +119,7 @@ def make_probe_data(vocab, word2id, legals_mat, num_cats, parent_count,
         # clustered_corr_mat = clustered_corr_mat[:, dg['leaves']]
         # plot_heatmap(clustered_corr_mat, [], [], dpi=None)
         # plot_heatmap(cluster(data_mat), [], [], dpi=None)
-    return probes, probe2cat, cat2sorted_legals
+    return probes, probe2cat, word2sorted_legals
 
 
 def sample_from_hierarchical_diffusion(node0, num_descendants, num_levels, e):
@@ -124,8 +133,8 @@ def sample_from_hierarchical_diffusion(node0, num_descendants, num_levels, e):
     return nodes
 
 
-def make_chunk(chunk_id, size2word2legals, vocab, num_start, chunk_size,
-               legals_distribution, truncate, cat2sorted_legals,
+def make_chunk(chunk_id, size2word2legals, word2sorted_legals, vocab, num_start, chunk_size,
+               legals_distribution, truncate,
                random_interval=np.nan):
     print('\nMaking tokens chunk with truncate={}'.format(truncate)) if chunk_id % NUM_PROCESSES == 0 else None
     #
@@ -143,23 +152,13 @@ def make_chunk(chunk_id, size2word2legals, vocab, num_start, chunk_size,
             legals_set = set(vocab)
             for size, word2legals in size2word2legals.items():
                 previous_token = tokens_chunk[-size]
+                sorted_legals = word2sorted_legals[previous_token]
+                num_truncated = int(len(sorted_legals) * truncate)
+                #
                 legals = word2legals[previous_token]
-                num_legals = len(legals)
-                num_truncated = int(num_legals * truncate)
-                legals_set.intersection_update(legals[:num_truncated])
-
-            # # TODO speedup
-            # previous_token = tokens_chunk[-1]
-            # legals = size2word2legals[1][previous_token]
-            # num_legals = len(legals)
-            # num_truncated = int(num_legals * truncate)
-            # legals_set = legals[:num_truncated]
-
-
-            # TODO use cat2sorted_legals
-
-
-
+                #
+                legals_set.intersection_update(legals)
+                legals_set.intersection_update(sorted_legals[:num_truncated])  # TODO test
             # sample from legals
             if legals_distribution == 'uniform':
                 p = None
@@ -213,7 +212,7 @@ def make_legal_mats(vocab, num_descendants, num_levels, mutation_prob, max_ngram
     return size2word2legals, ngram2legals_mat
 
 
-def make_tokens(vocab, size2word2legals, cat2sorted_legals,
+def make_tokens(vocab, size2word2legals, word2sorted_legals,
                 num_tokens, legals_distribution, max_ngram_size, truncate_list, num_chunks=32):
     """
     generate text by adding one word at a time to a list of words.
@@ -233,8 +232,8 @@ def make_tokens(vocab, size2word2legals, cat2sorted_legals,
     ld = legals_distribution
     results = [pool.apply_async(
         make_chunk,
-        args=(chunk_id, size2word2legals, vocab, max_ngram_size,
-              chunk_size, ld, truncate_steps[chunk_id], cat2sorted_legals))
+        args=(chunk_id, size2word2legals, word2sorted_legals, vocab, max_ngram_size,
+              chunk_size, ld, truncate_steps[chunk_id]))
         for chunk_id in range(num_chunks)]
     tokens = []
     print('Creating tokens from hierarchical dependency structure...')
