@@ -35,40 +35,7 @@ params.truncate_list = [0.5, 0.6]
 
 vocab, word2id = make_vocab(params.num_descendants, params.num_levels)
 
-# make underlying hierarchical structure
-size2word2legals, ngram2legals_mat = make_legal_mats(
-    vocab, params.num_descendants, params.num_levels, params.mutation_prob, params.max_ngram_size)
-
-# probes_data
-num_cats2max_ba = {}
-print('Getting {} categories with parent_count={}...'.format(NUM_CATS, params.parent_count))
-legals_mat = ngram2legals_mat[params.structure_ngram_size]
-probes, probe2cat, word2sorted_legals = make_probe_data(
-    vocab, word2id, legals_mat, NUM_CATS, params.parent_count, plot=False)
-print('Collected {} probes'.format(len(probes)))
-# check probe sim
-probe_acts1 = legals_mat[[word2id[p] for p in probes], :]
-ba1 = calc_ba(cosine_similarity(probe_acts1), probes, probe2cat)
-probe_acts2 = legals_mat[:, [word2id[p] for p in probes]].T
-ba2 = calc_ba(cosine_similarity(probe_acts2), probes, probe2cat)
-print('input-data row-wise ba={:.3f}'.format(ba1))
-print('input-data col-wise ba={:.3f}'.format(ba2))
-print()
-
-# sample tokens
-tokens = make_tokens(vocab, size2word2legals, word2sorted_legals, params.num_tokens,
-                     params.max_ngram_size, params.truncate_list)
-num_vocab = len(vocab)
-num_types_in_tokens = len(set(tokens))
-word2id = {word: n for n, word in enumerate(vocab)}
-token_ids = [word2id[w] for w in tokens]
-print()
-print('num_vocab={}'.format(num_vocab))
-print('num types in tokens={}'.format(num_types_in_tokens))
-if not num_types_in_tokens == num_vocab:
-    print('Not all types ({}/{} were found in tokens.'.format(num_types_in_tokens, num_vocab))
-num_theoretical_legals = num_vocab / (2 ** params.max_ngram_size)
-print('num_theoretical_legals={}'.format(num_theoretical_legals))  # perplexity should converge to this value
+raise SystemExit('debugging')
 
 # init
 print('Counting...')

@@ -11,6 +11,8 @@ from treetransitions.rnn import RNN
 from treetransitions.params import ObjectView
 from treetransitions import config
 
+TRUNCATE_SIZE = 1
+
 
 def main_job(param2val, min_probe_freq=10):
     # check if host is down - do this before any computation
@@ -37,7 +39,7 @@ def main_job(param2val, min_probe_freq=10):
         print('Getting {} categories with parent_count={}...'.format(num_cats, params.parent_count))
         legals_mat = ngram2legals_mat[params.structure_ngram_size]
         probes, probe2cat, word2sorted_legals = make_probe_data(
-            vocab, word2id, legals_mat, num_cats, params.parent_count, plot=False)
+            vocab, size2word2legals[TRUNCATE_SIZE], legals_mat, num_cats, params.parent_count, plot=False)
         num_cats2probes_data[num_cats] = (probes, probe2cat)
         print('Collected {} probes'.format(len(probes)))
         # check probe sim

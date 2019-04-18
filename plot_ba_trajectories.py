@@ -18,7 +18,7 @@ TITLE_FONTSIZE = 10
 default_dict = MatchParams.__dict__.copy()
 MatchParams.num_levels = [10]
 MatchParams.num_hiddens = [128]
-MatchParams.parent_count = [512]
+MatchParams.parent_count = [1024]
 MatchParams.num_partitions = [2]  # TODO
 
 

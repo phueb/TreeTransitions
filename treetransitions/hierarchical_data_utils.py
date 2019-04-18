@@ -9,7 +9,7 @@ import multiprocessing as mp
 from cytoolz import itertoolz
 from scipy.spatial.distance import pdist
 from matplotlib.colors import to_hex
-
+from collections import Counter
 
 NUM_PROCESSES = 4
 
@@ -39,7 +39,7 @@ def get_all_probes_in_tree(vocab, res1, z, node_id):
         res1.append(p)
 
 
-def make_probe_data(vocab, word2id, legals_mat, num_cats, parent_count,
+def make_probe_data(vocab, word2legals, legals_mat, num_cats, parent_count,
                     method='single', metric='euclidean', plot=True):
     """
     make categories from hierarchically organized data.
@@ -69,29 +69,37 @@ def make_probe_data(vocab, word2id, legals_mat, num_cats, parent_count,
     probes = []
     cat_probes_list = []
     probe2color = {}
-    cat2sorted_legals = {}
+    cat2legals = {cat: [] for cat in range(num_cats)}
     cmap = plt.cm.get_cmap('hsv', num_cats + 1)
-    for cat_id, cat_probes in enumerate(itertoolz.partition_all(num_members, retrieved_probes)):
+    for cat, cat_probes in enumerate(itertoolz.partition_all(num_members, retrieved_probes)):
         assert len(cat_probes) == num_members
-        probe2cat.update({p: cat_id for p in cat_probes})
+        probe2cat.update({p: cat for p in cat_probes})
         probes.extend(cat_probes)
         cat_probes_list.append(cat_probes)
         for p in cat_probes:
-            probe2color[p] = to_hex(cmap(cat_id))
-        #  get most diagnostic legals for cat
-        cols = legals_mat[:, [word2id[p] for p in cat_probes]]
-        cat_sorted_legal_ids = np.argsort(cols.sum(axis=1))  # sorted by lowest to highest cat diagnostic-ity
-        cat2sorted_legals[cat_id] = [vocab[i] for i in cat_sorted_legal_ids]  # typically almost as large as vocab
-    # convert cat2sorted_legals to word2sorted_legals
+            probe2color[p] = to_hex(cmap(cat))
+        #
+        for p in cat_probes:
+            legals = word2legals[p]
+            cat2legals[cat] += legals
+
+    # word2sorted_legals
     non_cat_sorted_legal_ids = np.argsort(legals_mat.sum(axis=1))
     non_cat_sorted_legals = [vocab[i] for i in non_cat_sorted_legal_ids]
     word2sorted_legals = {}
     for word in vocab:
         if word in probes:
             cat = probe2cat[word]
-            word2sorted_legals[word] = cat2sorted_legals[cat]
+            cat_legals = cat2legals[cat]
+            cat_legals2freq = Counter(cat_legals)
+
+            # TODO test
+            # print([k for k, v in cat_legals2freq.most_common(10)])
+
+            sorted_legals = sorted(set(cat_legals), key=cat_legals2freq.get)  # sorts in ascending order
+            word2sorted_legals[word] = sorted_legals
         else:
-            word2sorted_legals[word] = non_cat_sorted_legals  # careful: sorted in ascending order - truncate from end
+            word2sorted_legals[word] = non_cat_sorted_legals
     #
     if plot:
 
@@ -149,11 +157,11 @@ def make_chunk(chunk_id, size2word2legals, word2sorted_legals, vocab, num_start,
             legals_set = set(vocab)
             for size, word2legals in size2word2legals.items():
                 previous_token = tokens_chunk[-size]
-                sorted_legals = word2sorted_legals[previous_token]
-                num_truncated = int(len(sorted_legals) * truncate)
                 #
+                sorted_legals = word2sorted_legals[previous_token]
                 legals = word2legals[previous_token]
                 #
+                num_truncated = int(len(sorted_legals) * truncate)
                 legals_set.intersection_update(legals)
                 legals_set.intersection_update(sorted_legals[-num_truncated:])  # truncate from end TODO test
             # sample from legals
@@ -181,12 +189,16 @@ def make_legal_mats(vocab, num_descendants, num_levels, mutation_prob, max_ngram
     num_vocab = len(vocab)
     ngram2legals_mat = {ngram: np.zeros((num_vocab, num_vocab), dtype=np.int) for ngram in ngram_sizes}
     print('Making hierarchical dependency structure...')
+    # a column defines words that are predicted by the col word - but careful with node0
     for ngram_size in ngram_sizes:
         for row_id, word in enumerate(vocab):
             node0 = -1 if np.random.binomial(n=1, p=0.5) else 1
+
+            # TODO remove node0 an word2node0?
+
             word2node0[word] = node0
             ngram2legals_mat[ngram_size][row_id, :] = sample_from_hierarchical_diffusion(
-                node0, num_descendants, num_levels, mutation_prob)  # this row specifies col_words which predict the row_word
+                node0, num_descendants, num_levels, mutation_prob)
     print('Done')
     # collect legal next words for each word at each distance - do this once to speed calculation of tokens
     # whether -1 or 1 determines legality depends on node0 - otherwise half of words are never legal
@@ -195,8 +207,14 @@ def make_legal_mats(vocab, num_descendants, num_levels, mutation_prob, max_ngram
         legals_mat = ngram2legals_mat[ngram_size]
         word2legals = {}
         for col_word, col in zip(vocab, legals_mat.T):  # col contains information about which row_words come next
-            legals = [w for w, val in zip(vocab, col) if val == word2node0[w]]
-            word2legals[col_word] = np.random.permutation(legals)  # to ensure truncation affects each word differently
+
+            # legals = [w for w, val in zip(vocab, col) if val == word2node0[w]]
+
+            # TODO test if word2node0 is needed
+            legals = [w for w, val in zip(vocab, col) if val == 1]
+
+
+            word2legals[col_word] = np.random.permutation(legals).tolist()  # to ensure truncation affects each word differently
         size2word2legals[ngram_size] = word2legals
     return size2word2legals, ngram2legals_mat
 

@@ -35,7 +35,7 @@ class DefaultParams:
     num_tokens = [5 * 10 ** 6]
     max_ngram_size = [1]
     num_descendants = [2]
-    num_levels = [12]
+    num_levels = [10]
     mutation_prob = [0.2]
     parent_count = [1024]  # exact size of single parent cluster
     num_cats_list = [[32]]
