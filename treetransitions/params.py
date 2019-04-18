@@ -14,7 +14,7 @@ class Params:
     num_levels = [10]  # 12
     mutation_prob = [0.2]  # 0.2
     legals_distribution = ['uniform', 'triangular']  # TODO does small truncate only improve ba when triangular?
-    parent_count = [1024]  # exact size of single parent cluster
+    parent_count = [512]  # exact size of single parent cluster
     num_cats_list = [[32]]
     structure_ngram_size = [1]
     # rnn
@@ -37,7 +37,7 @@ class DefaultParams:
     num_levels = [12]
     mutation_prob = [0.2]
     legals_distribution = ['uniform']
-    parent_count = [1024]  # exact size of single parent cluster
+    parent_count = [512]  # exact size of single parent cluster
     num_cats_list = [[32]]
     structure_ngram_size = [1]
     # rnn

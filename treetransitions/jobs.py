@@ -6,7 +6,7 @@ import yaml
 import pandas as pd
 import sys
 
-from treetransitions.hierarchical_data_utils import make_data, make_probe_data, calc_ba
+from treetransitions.hierarchical_data_utils import make_tokens, make_probe_data, calc_ba, make_legal_mats, make_vocab
 from treetransitions.rnn import RNN
 from treetransitions.params import ObjectView
 from treetransitions import config
@@ -23,23 +23,11 @@ def main_job(param2val, min_probe_freq=10):
         print('{}={}'.format(k, v))
     print()
 
-    # make tokens with hierarchical n-gram structure
-    vocab, tokens, ngram2legals_mat = make_data(
-        params.num_tokens, params.legals_distribution, params.max_ngram_size,
-        params.num_descendants, params.num_levels, params.mutation_prob, params.truncate_list)
-    num_vocab = len(vocab)
-    num_types_in_tokens = len(set(tokens))
-    word2id = {word: n for n, word in enumerate(vocab)}
-    token_ids = [word2id[w] for w in tokens]
-    print()
-    print('num_vocab={}'.format(num_vocab))
-    print('num types in tokens={}'.format(num_types_in_tokens))
-    if not num_types_in_tokens == num_vocab:
-        print('Not all types ({}/{} were found in tokens.'.format(num_types_in_tokens, num_vocab))
+    vocab, word2id = make_vocab(params.num_descendants, params.num_levels)
 
-    #
-    num_theoretical_legals = num_vocab / (2 ** params.max_ngram_size)
-    print('num_theoretical_legals={}'.format(num_theoretical_legals))  # perplexity should converge to this value
+    # make underlying hierarchical structure
+    size2word2legals, ngram2legals_mat = make_legal_mats(
+        vocab, params.num_descendants, params.num_levels, params.mutation_prob, params.max_ngram_size)
 
     # probes_data
     num_cats2probes_data = {}
@@ -47,14 +35,9 @@ def main_job(param2val, min_probe_freq=10):
     for num_cats in params.num_cats_list:
         print('Getting {} categories with parent_count={}...'.format(num_cats, params.parent_count))
         legals_mat = ngram2legals_mat[params.structure_ngram_size]
-        probes, probe2cat = make_probe_data(legals_mat, vocab, num_cats, params.parent_count,
-                                            plot=False)
+        probes, probe2cat, cat2sorted_legals = make_probe_data(
+            vocab, word2id, legals_mat, num_cats, params.parent_count, plot=False)
         num_cats2probes_data[num_cats] = (probes, probe2cat)
-        c = Counter(tokens)
-        for p in probes:
-            # print('"{:<10}" {:>4}'.format(p, c[p]))  # check for bi-modality
-            if c[p] < min_probe_freq:
-                print('WARNING: "{}" occurs only {} times'.format(p, c[p]))
         print('Collected {} probes'.format(len(probes)))
         # check probe sim
         probe_acts1 = legals_mat[[word2id[p] for p in probes], :]
@@ -65,6 +48,29 @@ def main_job(param2val, min_probe_freq=10):
         print('input-data col-wise ba={:.3f}'.format(ba2))
         print()
         num_cats2max_ba[num_cats] = ba2
+
+    # sample tokens
+    tokens = make_tokens(vocab, size2word2legals, cat2sorted_legals,
+                         params.num_tokens, params.legals_distribution, params.max_ngram_size, params.truncate_list)
+    num_vocab = len(vocab)
+    num_types_in_tokens = len(set(tokens))
+    word2id = {word: n for n, word in enumerate(vocab)}
+    token_ids = [word2id[w] for w in tokens]
+    print()
+    print('num_vocab={}'.format(num_vocab))
+    print('num types in tokens={}'.format(num_types_in_tokens))
+    if not num_types_in_tokens == num_vocab:
+        print('Not all types ({}/{} were found in tokens.'.format(num_types_in_tokens, num_vocab))
+    num_theoretical_legals = num_vocab / (2 ** params.max_ngram_size)
+    print('num_theoretical_legals={}'.format(num_theoretical_legals))  # perplexity should converge to this value
+
+    # check probe frequency
+    c = Counter(tokens)
+    for num_cats, (probes, probe2cat) in num_cats2probes_data.items():
+        for p in probes:
+            # print('"{:<10}" {:>4}'.format(p, c[p]))  # check for bi-modality
+            if c[p] < min_probe_freq:
+                print('WARNING: "{}" occurs only {} times'.format(p, c[p]))
 
     # train loop
     srn = RNN(num_vocab, params)  # num_seqs_in_batch must be 1 to ensure mb_size is as specified in params

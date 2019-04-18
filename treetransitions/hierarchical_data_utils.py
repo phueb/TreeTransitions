@@ -39,20 +39,19 @@ def get_all_probes_in_tree(vocab, res1, z, node_id):
         res1.append(p)
 
 
-def make_probe_data(data_mat, vocab, num_cats, parent_count,
+def make_probe_data(vocab, word2id, legals_mat, num_cats, parent_count,
                     method='single', metric='euclidean', plot=True):
     """
     make categories from hierarchically organized data.
     """
     num_vocab = len(vocab)
-    word2id = {word: n for n, word in enumerate(vocab)}
     num_members = parent_count / num_cats
-    assert data_mat.shape == (num_vocab, num_vocab)
+    assert legals_mat.shape == (num_vocab, num_vocab)
     assert num_cats % 2 == 0
     assert num_members.is_integer()
     num_members = int(num_members)
     # get z - careful: idx1 and idx2 in z are not integers (they are floats)
-    corr_mat = to_corr_mat(data_mat)
+    corr_mat = to_corr_mat(legals_mat)
     z = linkage(corr_mat, metric=metric, method=method)  # need to cluster correlation matrix otherwise result is messy
     # find cluster (identified by idx1 and idx2) with parent_count nodes beneath it
     for row in z:
@@ -70,6 +69,7 @@ def make_probe_data(data_mat, vocab, num_cats, parent_count,
     probes = []
     cat_probes_list = []
     probe2color = {}
+    cat2sorted_legals = {}
     cmap = plt.cm.get_cmap('hsv', num_cats + 1)
     for cat_id, cat_probes in enumerate(itertoolz.partition_all(num_members, retrieved_probes)):
         assert len(cat_probes) == num_members
@@ -79,6 +79,12 @@ def make_probe_data(data_mat, vocab, num_cats, parent_count,
         cat_probes_list.append(cat_probes)
         for p in cat_probes:
             probe2color[p] = to_hex(cmap(cat_id))
+        #  get most diagnostic legals for cat
+        cols = legals_mat[:, [word2id[p] for p in cat_probes]]
+        print(cols.shape)
+        cat_sorted_legal_ids = np.argsort(cols.sum(axis=1))  # sorted by lowest to highest cat diagnostic-ity
+        cat2sorted_legals[cat_id] = [vocab[i] for i in cat_sorted_legal_ids]
+
     #
     if plot:
 
@@ -104,7 +110,7 @@ def make_probe_data(data_mat, vocab, num_cats, parent_count,
         # clustered_corr_mat = clustered_corr_mat[:, dg['leaves']]
         # plot_heatmap(clustered_corr_mat, [], [], dpi=None)
         # plot_heatmap(cluster(data_mat), [], [], dpi=None)
-    return probes, probe2cat
+    return probes, probe2cat, cat2sorted_legals
 
 
 def sample_from_hierarchical_diffusion(node0, num_descendants, num_levels, e):
@@ -118,7 +124,8 @@ def sample_from_hierarchical_diffusion(node0, num_descendants, num_levels, e):
     return nodes
 
 
-def make_chunk(chunk_id, size2word2legals, vocab, num_start, chunk_size, legals_distribution, truncate,
+def make_chunk(chunk_id, size2word2legals, vocab, num_start, chunk_size,
+               legals_distribution, truncate, cat2sorted_legals,
                random_interval=np.nan):
     print('\nMaking tokens chunk with truncate={}'.format(truncate)) if chunk_id % NUM_PROCESSES == 0 else None
     #
@@ -133,27 +140,30 @@ def make_chunk(chunk_id, size2word2legals, vocab, num_start, chunk_size, legals_
         # append word which is constrained by hierarchical structure
         else:
             # get words which are legal to come next
-            # legals_set = set(vocab)
-            # for size, word2legals in size2word2legals.items():
-            #     previous_token = tokens_chunk[-size]
-            #     legals = word2legals[previous_token]
-            #     num_legals = len(legals)
-            #     num_truncated = int(num_legals * truncate)
-            #     legals_set.intersection_update(legals[:num_truncated])
+            legals_set = set(vocab)
+            for size, word2legals in size2word2legals.items():
+                previous_token = tokens_chunk[-size]
+                legals = word2legals[previous_token]
+                num_legals = len(legals)
+                num_truncated = int(num_legals * truncate)
+                legals_set.intersection_update(legals[:num_truncated])
 
-            # TODO
-            previous_token = tokens_chunk[-1]
-            legals = size2word2legals[1][previous_token]
-            num_legals = len(legals)
-            num_truncated = int(num_legals * truncate)
-            legals_set = legals[:num_truncated]
+            # # TODO speedup
+            # previous_token = tokens_chunk[-1]
+            # legals = size2word2legals[1][previous_token]
+            # num_legals = len(legals)
+            # num_truncated = int(num_legals * truncate)
+            # legals_set = legals[:num_truncated]
+
+
+            # TODO use cat2sorted_legals
 
 
 
             # sample from legals
             if legals_distribution == 'uniform':
                 p = None
-            elif legals_distribution == 'triangular':  # TODO this requires that legals_set is sorted - but doing so across all words prevents learning
+            elif legals_distribution == 'triangular':
                 tmp = np.arange(1, len(legals_set) + 1)
                 p = tmp / np.sum(tmp)
             else:
@@ -169,8 +179,42 @@ def make_chunk(chunk_id, size2word2legals, vocab, num_start, chunk_size, legals_
     return tokens_chunk
 
 
-def make_data(num_tokens, legals_distribution, max_ngram_size, num_descendants, num_levels, e,
-              truncate_list, num_chunks=32):
+def make_vocab(num_descendants, num_levels):
+    num_vocab = num_descendants ** num_levels
+    vocab = ['w{}'.format(i) for i in np.arange(num_vocab)]
+    word2id = {word: n for n, word in enumerate(vocab)}
+    return vocab, word2id
+
+
+def make_legal_mats(vocab, num_descendants, num_levels, mutation_prob, max_ngram_size):
+    # ngram2legals_mat - each row specifies legal next words (col_words)
+    ngram_sizes = range(1, max_ngram_size + 1)
+    word2node0 = {}
+    num_vocab = len(vocab)
+    ngram2legals_mat = {ngram: np.zeros((num_vocab, num_vocab), dtype=np.int) for ngram in ngram_sizes}
+    print('Making hierarchical dependency structure...')
+    for ngram_size in ngram_sizes:
+        for row_id, word in enumerate(vocab):
+            node0 = -1 if np.random.binomial(n=1, p=0.5) else 1
+            word2node0[word] = node0
+            ngram2legals_mat[ngram_size][row_id, :] = sample_from_hierarchical_diffusion(
+                node0, num_descendants, num_levels, mutation_prob)  # this row specifies col_words which predict the row_word
+    print('Done')
+    # collect legal next words for each word at each distance - do this once to speed calculation of tokens
+    # whether -1 or 1 determines legality depends on node0 - otherwise half of words are never legal
+    size2word2legals = {}
+    for ngram_size in ngram_sizes:
+        legals_mat = ngram2legals_mat[ngram_size]
+        word2legals = {}
+        for col_word, col in zip(vocab, legals_mat.T):  # col contains information about which row_words come next
+            legals = [w for w, val in zip(vocab, col) if val == word2node0[w]]
+            word2legals[col_word] = np.random.permutation(legals)  # to ensure truncation affects each word differently
+        size2word2legals[ngram_size] = word2legals
+    return size2word2legals, ngram2legals_mat
+
+
+def make_tokens(vocab, size2word2legals, cat2sorted_legals,
+                num_tokens, legals_distribution, max_ngram_size, truncate_list, num_chunks=32):
     """
     generate text by adding one word at a time to a list of words.
     each word is constrained by the legals matrices - which are hierarchical -
@@ -181,60 +225,30 @@ def make_data(num_tokens, legals_distribution, max_ngram_size, num_descendants, 
     the size of the intersection is the best possible perplexity a model can achieve,
     because perplexity indicates the number of choices from a random uniformly distributed set of choices
     """
-    # vocab
-    num_vocab = num_descendants ** num_levels
-    vocab = ['w{}'.format(i) for i in np.arange(num_vocab)]
-    # ngram2legals_mat - each row specifies legal next words (col_words)
-    ngram_sizes = range(1, max_ngram_size + 1)
-    word2node0 = {}
-    ngram2slegals_mat = {ngram: np.zeros((num_vocab, num_vocab), dtype=np.int) for ngram in ngram_sizes}
-    print('Making hierarchical dependency structure...')
-    for ngram_size in ngram_sizes:
-        for row_id, word in enumerate(vocab):
-            node0 = -1 if np.random.binomial(n=1, p=0.5) else 1
-            word2node0[word] = node0
-            ngram2slegals_mat[ngram_size][row_id, :] = sample_from_hierarchical_diffusion(
-                node0, num_descendants, num_levels, e)  # this row specifies col_words which predict the row_word
-    print('Done')
-    # collect legal next words for each word at each distance - do this once to speed calculation of tokens
-    # whether -1 or 1 determines legality depends on node0 - otherwise half of words are never legal
-    size2word2legals = {}
-    for ngram_size in ngram_sizes:
-        legals_mat = ngram2slegals_mat[ngram_size]
-        word2legals = {}
-        for col_word, col in zip(vocab, legals_mat.T):  # col contains information about which row_words come next
-            legals = [w for w, val in zip(vocab, col) if val == word2node0[w]]
-            word2legals[col_word] = np.random.permutation(legals)  # to ensure truncation affects each word differently
-        size2word2legals[ngram_size] = word2legals
     # make tokens - in parallel
     pool = mp.Pool(processes=NUM_PROCESSES)
     min_truncate, max_truncate = truncate_list
     truncate_steps = np.linspace(min_truncate, max_truncate, num_chunks + 2)[1:-1]
     chunk_size = num_tokens // num_chunks
     ld = legals_distribution
-
-
-    # TODO debugging
-    # make_chunk(0, size2word2legals, vocab, max_ngram_size, chunk_size, ld, truncate_steps[0])
-    # raise SystemError
-
     results = [pool.apply_async(
         make_chunk,
-        args=(chunk_id, size2word2legals, vocab, max_ngram_size, chunk_size, ld, truncate_steps[chunk_id]))
+        args=(chunk_id, size2word2legals, vocab, max_ngram_size,
+              chunk_size, ld, truncate_steps[chunk_id], cat2sorted_legals))
         for chunk_id in range(num_chunks)]
     tokens = []
     print('Creating tokens from hierarchical dependency structure...')
     try:
         for res in results:
             tokens_chunk = res.get()
-            print('num types in tokens_chunk={}'.format(len(set(tokens_chunk))))
+            print('\nnum types in tokens_chunk={}'.format(len(set(tokens_chunk))))
             tokens += tokens_chunk
         pool.close()
     except KeyboardInterrupt:
         pool.close()
         raise SystemExit('Interrupt occurred during multiprocessing. Closed worker pool.')
     print('Done')
-    return vocab, tokens, ngram2slegals_mat
+    return tokens
 
 
 def calc_ba(probe_sims, probes, probe2cat, num_opt_init_steps=1, num_opt_steps=10):
