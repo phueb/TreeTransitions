@@ -17,6 +17,8 @@ class LocalDirs:
 
 class Eval:
     debug = False
+    calc_pp = False
+
 
 
 class Graph:

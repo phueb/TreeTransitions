@@ -11,7 +11,6 @@ class RNN:
                  num_eval_steps=1,
                  init_range=0.01,
                  num_seqs_in_batch=1,
-                 shuffle_seqs=False,
                  num_layers=1,
                  dropout_prob=0.0,
                  grad_clip=None):
@@ -31,7 +30,6 @@ class RNN:
         self.num_layers = num_layers
         self.grad_clip = grad_clip
         self.num_seqs_in_batch = num_seqs_in_batch
-        self.shuffle_seqs = shuffle_seqs
         self.init_range = init_range
         #
         self.model = TorchRNN(self.rnn_type, self.num_layers, self.input_size, self.num_hiddens, self.init_range)
@@ -74,8 +72,6 @@ class RNN:
         """
         start_time = time.time()
         self.model.train()
-        if self.shuffle_seqs:
-            np.random.shuffle(seqs)
 
         for step, batch in enumerate(self.gen_batches(seqs)):
             self.model.batch_size = len(batch)  # dynamic batch size

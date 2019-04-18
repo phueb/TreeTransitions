@@ -4,6 +4,7 @@ import numpy as np
 from collections import Counter
 import yaml
 import pandas as pd
+import sys
 
 from treetransitions.hierarchical_data_utils import make_data, make_probe_data, calc_ba
 from treetransitions.rnn import RNN
@@ -77,7 +78,7 @@ def main_job(param2val, min_probe_freq=10):
         seqs_in_part = [list(seq) for seq in itertoolz.partition_all(params.mb_size, part)]
         print('num mb_size sequences in partition={}'.format(len(seqs_in_part)))
         # perplexity
-        pp = srn.calc_seqs_pp(seqs_in_part)
+        pp = srn.calc_seqs_pp(seqs_in_part) if config.Eval.calc_pp else 0
         # iterations
         for iteration in range(params.num_iterations):
             # ba
@@ -89,7 +90,8 @@ def main_job(param2val, min_probe_freq=10):
                 print('partition={:>2}/{:>2} | ba={:.3f} num_cats={}'.format(part_id, srn.num_partitions, ba, num_cats))
             #
             print('partition={:>2}/{:>2} | before-training partition pp={:>5}\n'.format(
-                part_id, srn.num_partitions, int(pp)))
+                part_id, srn.num_partitions, pp))
+            sys.stdout.flush()
             # train
             srn.train_partition(seqs_in_part, verbose=False)  # a seq is a list of mb_size token_ids
 

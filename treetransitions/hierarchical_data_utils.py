@@ -133,15 +133,24 @@ def make_chunk(chunk_id, size2word2legals, vocab, num_start, chunk_size, legals_
         # append word which is constrained by hierarchical structure
         else:
             # get words which are legal to come next
-            legals_set = set(vocab)
-            for size, word2legals in size2word2legals.items():
-                previous_token = tokens_chunk[-size]
-                legals = word2legals[previous_token]
-                num_legals = len(legals)
-                num_truncated = int(num_legals * truncate)
-                legals_set.intersection_update(legals[:num_truncated])  # TODO test num_truncated
-            # sample from legals
+            # legals_set = set(vocab)
+            # for size, word2legals in size2word2legals.items():
+            #     previous_token = tokens_chunk[-size]
+            #     legals = word2legals[previous_token]
+            #     num_legals = len(legals)
+            #     num_truncated = int(num_legals * truncate)
+            #     legals_set.intersection_update(legals[:num_truncated])
 
+            # TODO
+            previous_token = tokens_chunk[-1]
+            legals = size2word2legals[1][previous_token]
+            num_legals = len(legals)
+            num_truncated = int(num_legals * truncate)
+            legals_set = legals[:num_truncated]
+
+
+
+            # sample from legals
             if legals_distribution == 'uniform':
                 p = None
             elif legals_distribution == 'triangular':  # TODO this requires that legals_set is sorted - but doing so across all words prevents learning
@@ -217,7 +226,9 @@ def make_data(num_tokens, legals_distribution, max_ngram_size, num_descendants, 
     print('Creating tokens from hierarchical dependency structure...')
     try:
         for res in results:
-            tokens += res.get()
+            tokens_chunk = res.get()
+            print('num types in tokens_chunk={}'.format(len(set(tokens_chunk))))
+            tokens += tokens_chunk
         pool.close()
     except KeyboardInterrupt:
         pool.close()
