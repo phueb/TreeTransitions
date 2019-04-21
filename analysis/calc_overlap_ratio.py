@@ -7,18 +7,24 @@ from treetransitions.params import DefaultParams, ObjectView
 from ludwigcluster.utils import list_all_param2vals
 
 """
-the stack-overlap ratio is a ratio of two counts: stack and overlap.
+the overlap ratio is a ratio of two counts: A & B
 for each category i,
 for each word j,
-define stack as the number of types the word j follows members of the category i,
-define overlap as the total number of times word j occurs in the input
+define Aij as the number of times the word j follows members of the category i,
+define Bij as the total number of times word j occurs in the input
+add all Aij to form A, and add all Bij to form B, then divide to get the  ratio
 
 note: this ratio is only informative using toy data where each legal has the same chance of occurring after
-any vocab word. if, for example "cream" followed "ice" frequently, this would increase "stack", 
+any vocab word. if, for example "cream" followed "ice" frequently, this would increase the numerator, 
 but this is misleading because "cream" might not follow other dessert words.
-"stack" is supposed to be sensitive to the extent to which legals are shared across cat members,
+the numerator is supposed to be sensitive to the extent to which legals are shared across cat members,
 but in this case, "cream" just occurs frequently following a single member of the category.
-this would inflate the s-o ratio.
+this would inflate the overlap ratio.
+
+note: overlap indirectly measures the degree to which contexts overlap across members of a category.
+a more direct measurement might take into consideration the number of category members which occur with a context,
+because "cream" might occur frequently with "ice" without occurring frequently with other members of the same category
+in which "ice" belongs 
 """
 
 TRUNCATE_SIZE = 1
@@ -32,7 +38,7 @@ params.num_levels = 10
 params.e = 0.2
 params.truncate_num_cats = NUM_CATS
 
-params.truncate_list = [0.8, 0.9]
+params.truncate_list = [0.1, 0.0]
 
 vocab, word2id = make_vocab(params.num_descendants, params.num_levels)
 
@@ -86,8 +92,8 @@ print('Calculating stack-overlap ratios...')
 cat_mean_ratios = []
 cat_var_ratios = []
 for cat in cats:
-    num_after_cats = []  # "stack"
-    num_totals = []  # "overlap"
+    num_after_cats = []
+    num_totals = []
     for word in vocab:
         num_after_cat = word2cat2count[word][cat]
         num_total = word2count[word] + 1
@@ -96,7 +102,7 @@ for cat in cats:
             num_after_cats.append(num_after_cat)
             num_totals.append(num_total)
     #
-    ratios = [stack / overlap for stack, overlap in zip(num_after_cats, num_totals)]
+    ratios = [a / b for a, b in zip(num_after_cats, num_totals)]
     cat_mean_ratio = np.mean(ratios).round(3)
     cat_var_ratio = np.var(ratios).round(5)
     #
@@ -106,3 +112,6 @@ for cat in cats:
 
 
 print(np.mean(cat_mean_ratios), np.mean(cat_var_ratios))
+print(1 / NUM_CATS)
+
+# TODO the overlap ratio approximates 1/NUM_CATS (when truncation is small)

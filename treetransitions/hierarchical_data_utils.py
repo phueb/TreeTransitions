@@ -10,6 +10,7 @@ from cytoolz import itertoolz
 from scipy.spatial.distance import pdist
 from matplotlib.colors import to_hex
 from collections import Counter
+import random
 
 NUM_PROCESSES = 4
 
@@ -39,8 +40,8 @@ def get_all_probes_in_tree(vocab, res1, z, node_id):
         res1.append(p)
 
 
-def make_probe_data(vocab, word2legals, legals_mat, num_cats, parent_count,
-                    method='single', metric='euclidean', plot=True):
+def make_probe_data(vocab, word2legals, legals_mat, num_cats, parent_count, truncate_control,
+                    method='single', metric='euclidean', plot=False):
     """
     make categories from hierarchically organized data.
     """
@@ -92,11 +93,10 @@ def make_probe_data(vocab, word2legals, legals_mat, num_cats, parent_count,
             cat = probe2cat[word]
             cat_legals = cat2legals[cat]
             cat_legals2freq = Counter(cat_legals)
-
-            # TODO test
-            # print([k for k, v in cat_legals2freq.most_common(10)])
-
+            #
             sorted_legals = sorted(set(cat_legals), key=cat_legals2freq.get)  # sorts in ascending order
+            if truncate_control:
+                random.shuffle(sorted_legals)  # TODO test
             word2sorted_legals[word] = sorted_legals
         else:
             word2sorted_legals[word] = non_cat_sorted_legals
@@ -164,10 +164,10 @@ def make_chunk(chunk_id, size2word2legals, word2sorted_legals, vocab, num_start,
                 num_truncated = int(len(sorted_legals) * truncate)
                 legals_set.intersection_update(legals)
 
-                # TODO rather than truncating, implement indexing a window in sorted_legals?
-                # TODO this window would slide as training progresses
+                # TODO implement control - truncate randomly ordered sorted_legals - controls for type/token ratio
 
-                legals_set.intersection_update(sorted_legals[-num_truncated:])  # truncate from end TODO test
+
+                legals_set.intersection_update(sorted_legals[-num_truncated:])  # truncate from end
             # sample from legals
             try:
                 new_token = np.random.choice(list(legals_set), size=1, p=None).item()
