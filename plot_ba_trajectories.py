@@ -2,6 +2,7 @@ import yaml
 import matplotlib.pyplot as plt
 import seaborn as sns
 import pandas as pd
+import numpy as np
 
 from ludwigcluster.utils import list_all_param2vals
 from treetransitions import config
@@ -80,15 +81,23 @@ def plot_ba_trajs(d1, d2, title):
     ax.yaxis.grid(True)
     ax.set_ylim([0.5, 1.0])
     # plot
+    xticks = None
     num_trajs = len(d1)
     palette = iter(sns.color_palette('hls', num_trajs))
     for num_cats, bas in sorted(d1.items(), key=lambda i: i[0]):
+        num_bas = len(bas)
+        xticks = np.arange(num_bas)
         c = next(palette)
         ax.plot(bas, '-', color=c,
                 label='num_cats={}'.format(num_cats))
         if d2 is not None:
             ax.axhline(y=d2[num_cats], linestyle='dashed', color=c)
     plt.legend(loc='upper left', frameon=False)
+    #
+    ax.set_xticks(xticks)
+    ax.set_xticklabels(xticks)
+    ax.xaxis.grid(True)
+    #
     plt.tight_layout()
     plt.show()
 

@@ -38,7 +38,7 @@ params.num_levels = 10
 params.e = 0.2
 params.truncate_num_cats = NUM_CATS
 
-params.truncate_list = [0.1, 0.0]
+params.truncate_list = [0.5, 1.0]
 
 vocab, word2id = make_vocab(params.num_descendants, params.num_levels)
 

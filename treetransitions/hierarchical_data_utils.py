@@ -94,9 +94,12 @@ def make_probe_data(vocab, word2legals, legals_mat, num_cats, parent_count, trun
             cat_legals = cat2legals[cat]
             cat_legals2freq = Counter(cat_legals)
             #
+            # for k, v in sorted(cat_legals2freq.items(), key=lambda i: cat_legals2freq[i[0]]):
+            #     print(k, v)
+            #
             sorted_legals = sorted(set(cat_legals), key=cat_legals2freq.get)  # sorts in ascending order
             if truncate_control:
-                random.shuffle(sorted_legals)  # TODO test
+                random.shuffle(sorted_legals)
             word2sorted_legals[word] = sorted_legals
         else:
             word2sorted_legals[word] = non_cat_sorted_legals
@@ -163,10 +166,6 @@ def make_chunk(chunk_id, size2word2legals, word2sorted_legals, vocab, num_start,
                 #
                 num_truncated = int(len(sorted_legals) * truncate)
                 legals_set.intersection_update(legals)
-
-                # TODO implement control - truncate randomly ordered sorted_legals - controls for type/token ratio
-
-
                 legals_set.intersection_update(sorted_legals[-num_truncated:])  # truncate from end
             # sample from legals
             try:
