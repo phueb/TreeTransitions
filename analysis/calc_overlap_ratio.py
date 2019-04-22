@@ -51,7 +51,7 @@ num_cats2word2sorted_legals = {}
 print('Getting {} categories with parent_count={}...'.format(NUM_CATS, params.parent_count))
 legals_mat = ngram2legals_mat[params.structure_ngram_size]
 probes, probe2cat, word2sorted_legals = make_probe_data(
-    vocab, size2word2legals[TRUNCATE_SIZE], legals_mat, NUM_CATS, params.parent_count, plot=False)
+    vocab, size2word2legals[TRUNCATE_SIZE], legals_mat, NUM_CATS, params.parent_count, params.truncate_control)
 print('Collected {} probes'.format(len(probes)))
 # check probe sim
 probe_acts1 = legals_mat[[word2id[p] for p in probes], :]

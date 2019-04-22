@@ -9,13 +9,13 @@ class Params:
     # input data
     truncate_control = [True, False]
     truncate_num_cats = [32]
-    truncate_list = [[1.0, 0.5], [0.5, 1.0]]
+    truncate_list = [[1.0, 0.2], [0.2, 1.0]]
     num_tokens = [5 * 10 ** 6]
     max_ngram_size = [1]
     num_descendants = [2]  # 2
-    num_levels = [12]  # 12
+    num_levels = [10]  # 12
     mutation_prob = [0.2]  # 0.2
-    parent_count = [4096]  # exact size of single parent cluster
+    parent_count = [1024]  # exact size of single parent cluster
     num_cats_list = [[2, 4, 8, 16, 32]]
     structure_ngram_size = [1]
     # rnn
@@ -33,13 +33,13 @@ class DefaultParams:
     # input data
     truncate_control = [True, False]
     truncate_num_cats = [32]
-    truncate_list = [[0.5, 1.0], [1.0, 0.5]]
+    truncate_list = [[0.2, 1.0], [1.0, 0.2]]
     num_tokens = [5 * 10 ** 6]
     max_ngram_size = [1]
     num_descendants = [2]
-    num_levels = [12]
+    num_levels = [10]
     mutation_prob = [0.2]
-    parent_count = [4096]  # exact size of single parent cluster
+    parent_count = [1024]  # exact size of single parent cluster
     num_cats_list = [[2, 4, 8, 16, 32]]
     structure_ngram_size = [1]
     # rnn
