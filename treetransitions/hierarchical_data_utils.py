@@ -45,6 +45,7 @@ def make_probe_data(vocab, word2legals, legals_mat, num_cats, parent_count, trun
     """
     make categories from hierarchically organized data.
     """
+    assert isinstance(truncate_control, bool)  # if it was [False], it would incorrectly evaluate to True,
     print('truncate_control={}'.format(truncate_control))
     num_vocab = len(vocab)
     num_members = parent_count / num_cats

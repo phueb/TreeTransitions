@@ -64,6 +64,8 @@ def main_job(param2val, min_probe_freq=10):
 
     vocab, word2id = make_vocab(params.num_descendants, params.num_levels)
 
+    # TODO replace below with jobs.generate_toy_data()
+
     # make underlying hierarchical structure
     size2word2legals, ngram2legals_mat = make_legal_mats(
         vocab, params.num_descendants, params.num_levels, params.mutation_prob, params.max_ngram_size)
