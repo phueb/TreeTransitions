@@ -7,7 +7,7 @@ class ObjectView(object):
 
 class Params:
     # input data
-    truncate_control = [True, False]
+    truncate_control = [False]
     truncate_num_cats = [32]
     truncate_list = [[1.0, 0.5], [0.5, 1.0]]
     num_tokens = [5 * 10 ** 6]
@@ -31,7 +31,7 @@ class Params:
 
 class DefaultParams:
     # input data
-    truncate_control = [True, False]
+    truncate_control = [False]
     truncate_num_cats = [32]
     truncate_list = [[0.5, 1.0], [1.0, 0.5]]
     num_tokens = [5 * 10 ** 6]

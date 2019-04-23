@@ -14,13 +14,11 @@ VERBOSE = True
 YLIMs = None
 FIGSIZE = (10, 10)
 TITLE_FONTSIZE = 10
+PLOT_NUM_CATS_LIST = [2, 32]
 
 
 default_dict = MatchParams.__dict__.copy()
 MatchParams.num_levels = [10]
-MatchParams.num_hiddens = [128]
-MatchParams.parent_count = [1024]
-MatchParams.num_partitions = [2]
 
 
 def gen_param_ps(param2requested, param2default):
@@ -70,7 +68,7 @@ def make_num_cats2bas(dfs):
     return res
 
 
-def plot_ba_trajs(d1, d2, title):
+def plot_ba_trajs(d1, d2, title, num_steps=10):
     fig, ax = plt.subplots(figsize=FIGSIZE, dpi=None)
     plt.title(title, fontsize=TITLE_FONTSIZE)
     ax.set_xlabel('Iteration')
@@ -85,8 +83,10 @@ def plot_ba_trajs(d1, d2, title):
     num_trajs = len(d1)
     palette = iter(sns.color_palette('hls', num_trajs))
     for num_cats, bas in sorted(d1.items(), key=lambda i: i[0]):
+        if num_cats not in PLOT_NUM_CATS_LIST:
+            continue
         num_bas = len(bas)
-        xticks = np.arange(num_bas)
+        xticks = np.arange(0, num_bas + 1, num_steps)
         c = next(palette)
         ax.plot(bas, '-', color=c,
                 label='num_cats={}'.format(num_cats))
