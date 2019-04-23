@@ -11,7 +11,7 @@ from ludwigcluster.utils import list_all_param2vals
 
 
 # in-out correlation matrix
-NGRAM_SIZE = 1
+NGRAM_SIZE_REPRESENTATION = 1
 BINARY = False
 
 # toy data
@@ -23,7 +23,7 @@ params.num_tokens = 1 * 10 ** 6
 params.num_levels = 10
 params.e = 0.2
 params.truncate_num_cats = NUM_CATS
-params.truncate_list = [0.5, 1.0]
+params.truncate_list = [0.1, 1.0]
 params.truncate_control = [False]  # TODO careful here
 params.num_partitions = [8]
 
@@ -68,7 +68,7 @@ def make_in_out_corr_mat(start, end):
     num_types = len(types)
     type2id = {t: n for n, t in enumerate(types)}
     # ngrams
-    ngrams = list(itertoolz.sliding_window(NGRAM_SIZE, tokens_part))
+    ngrams = list(itertoolz.sliding_window(NGRAM_SIZE_REPRESENTATION, tokens_part))
     ngram_types = sorted(set(ngrams))
     num_ngram_types = len(ngram_types)
     ngram2id = {t: n for n, t in enumerate(ngram_types)}
@@ -78,8 +78,8 @@ def make_in_out_corr_mat(start, end):
     data = []
     row_ids = []
     cold_ids = []
-    mat_loc2freq = {}  # to keep track of number of ngram & type co-occurence
-    for n, ngram in enumerate(ngrams[:-NGRAM_SIZE]):
+    mat_loc2freq = {}  # to keep track of number of ngram & type co-occurrence
+    for n, ngram in enumerate(ngrams[:-NGRAM_SIZE_REPRESENTATION]):
         # row_id + col_id
         col_id = ngram2id[ngram]
         next_ngram = ngrams[n + 1]
@@ -113,24 +113,29 @@ in_out_corr_mat1, types1 = make_in_out_corr_mat(start1, end1)
 in_out_corr_mat2, types2 = make_in_out_corr_mat(start2, end2)
 
 
+def printout(fitted):
+    print('(  :31) sum of sing. values={:,} | %var={:.2f}'.format(
+        np.sum(fitted.singular_values_[:31]).round(0),
+        np.sum(fitted.explained_variance_ratio_[:31])))
+    print('(31:64) sum of sing. values={:,} | %var={:.2f}'.format(
+        np.sum(fitted.singular_values_[31:64]).round(0),
+        np.sum(fitted.explained_variance_ratio_[31:64])))
+    print('(64:  ) sum of sing. values={:,} | %var={:.2f}'.format(
+        np.sum(fitted.singular_values_[64:]).round(0),
+        np.sum(fitted.explained_variance_ratio_[64:])))
+
+
 # pca1
 print('Fitting PCA 1 ...')
-dense_in_out_corr_mat1 = in_out_corr_mat1.todense()
 pca1 = PCA(n_components=None)
-pca1.fit(dense_in_out_corr_mat1)
-print('sum of sing. values (  :31) =', np.sum(pca1.singular_values_[:31]).round(1))
-print('sum of sing. values (31:64) =', np.sum(pca1.singular_values_[31:64]).round(1))
-print('sum of sing. values (64:  ) =', np.sum(pca1.singular_values_[64:]).round(1))
+pca1.fit(in_out_corr_mat1.todense())
+printout(pca1)
 
 # pca2
 print('Fitting PCA 2 ...')
-dense_in_out_corr_mat2 = in_out_corr_mat2.todense()
 pca2 = PCA(n_components=None)
-pca2.fit_transform(dense_in_out_corr_mat2)
-print('sum of sing. values (  :31) =', np.sum(pca2.singular_values_[:31]).round(1))
-print('sum of sing. values (31:64) =', np.sum(pca2.singular_values_[31:64]).round(1))
-print('sum of sing. values (64:  ) =', np.sum(pca2.singular_values_[64:]).round(1))
-
+pca2.fit_transform(in_out_corr_mat2.todense())
+printout(pca2)
 
 print('\ntruncate_control={}'.format(params.truncate_control))
 
