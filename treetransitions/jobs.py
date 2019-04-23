@@ -14,6 +14,43 @@ from treetransitions import config
 TRUNCATE_SIZE = 1
 
 
+def generate_toy_data(params, num_cats):
+    toy_data = {}
+
+    vocab, word2id = make_vocab(params.num_descendants, params.num_levels)
+
+    # make underlying hierarchical structure
+    size2word2legals, ngram2legals_mat = make_legal_mats(
+        vocab, params.num_descendants, params.num_levels, params.mutation_prob, params.max_ngram_size)
+
+    # probes_data
+    num_cats2word2sorted_legals = {}
+    print('Getting {} categories with parent_count={}...'.format(num_cats, params.parent_count))
+    legals_mat = ngram2legals_mat[params.structure_ngram_size]
+    probes, probe2cat, word2sorted_legals = make_probe_data(
+        vocab, size2word2legals[TRUNCATE_SIZE], legals_mat, num_cats, params.parent_count, params.truncate_control)
+    print('Collected {} probes'.format(len(probes)))
+    # check probe sim
+    probe_acts1 = legals_mat[[word2id[p] for p in probes], :]
+    ba1 = calc_ba(cosine_similarity(probe_acts1), probes, probe2cat)
+    probe_acts2 = legals_mat[:, [word2id[p] for p in probes]].T
+    ba2 = calc_ba(cosine_similarity(probe_acts2), probes, probe2cat)
+    print('input-data row-wise ba={:.3f}'.format(ba1))
+    print('input-data col-wise ba={:.3f}'.format(ba2))
+    print()
+    num_cats2word2sorted_legals[num_cats] = word2sorted_legals
+
+    # sample tokens
+    tokens = make_tokens(vocab, size2word2legals, num_cats2word2sorted_legals[params.truncate_num_cats],
+                         params.num_tokens, params.max_ngram_size, params.truncate_list)
+
+    toy_data['tokens'] = tokens
+    toy_data['vocab'] = vocab
+    toy_data['probe2cat'] = probe2cat
+    res = ObjectView(toy_data)
+    return res
+
+
 def main_job(param2val, min_probe_freq=10):
     # check if host is down - do this before any computation
     results_p = config.RemoteDirs.runs / param2val['param_name'] / param2val['job_name'] / 'results.csv'

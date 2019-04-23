@@ -1,10 +1,9 @@
 import numpy as np
 from sklearn.decomposition import PCA
 from scipy import sparse
-from sklearn.metrics.pairwise import cosine_similarity
 from cytoolz import itertoolz
 
-from treetransitions.hierarchical_data_utils import make_tokens, make_probe_data, calc_ba, make_vocab, make_legal_mats
+from treetransitions.jobs import generate_toy_data
 from treetransitions.params import DefaultParams, ObjectView
 
 from ludwigcluster.utils import list_all_param2vals
@@ -23,38 +22,11 @@ params.num_tokens = 1 * 10 ** 6
 params.num_levels = 10
 params.e = 0.2
 params.truncate_num_cats = NUM_CATS
-params.truncate_list = [0.1, 1.0]
+params.truncate_list = [0.5, 1.0]
 params.truncate_control = [False]  # TODO careful here
-params.num_partitions = [8]
 
 
-vocab, word2id = make_vocab(params.num_descendants, params.num_levels)
-
-# make underlying hierarchical structure
-size2word2legals, ngram2legals_mat = make_legal_mats(
-    vocab, params.num_descendants, params.num_levels, params.mutation_prob, params.max_ngram_size)
-
-# probes_data
-num_cats2word2sorted_legals = {}
-print('Getting {} categories with parent_count={}...'.format(NUM_CATS, params.parent_count))
-legals_mat = ngram2legals_mat[params.structure_ngram_size]
-probes, probe2cat, word2sorted_legals = make_probe_data(
-    vocab, size2word2legals[TRUNCATE_SIZE], legals_mat, NUM_CATS, params.parent_count, params.truncate_control)
-print('Collected {} probes'.format(len(probes)))
-# check probe sim
-probe_acts1 = legals_mat[[word2id[p] for p in probes], :]
-ba1 = calc_ba(cosine_similarity(probe_acts1), probes, probe2cat)
-probe_acts2 = legals_mat[:, [word2id[p] for p in probes]].T
-ba2 = calc_ba(cosine_similarity(probe_acts2), probes, probe2cat)
-print('input-data row-wise ba={:.3f}'.format(ba1))
-print('input-data col-wise ba={:.3f}'.format(ba2))
-print()
-num_cats2word2sorted_legals[NUM_CATS] = word2sorted_legals
-
-
-# sample tokens
-tokens = make_tokens(vocab, size2word2legals, num_cats2word2sorted_legals[params.truncate_num_cats],
-                     params.num_tokens, params.max_ngram_size, params.truncate_list)
+toy_data = generate_toy_data(params, NUM_CATS)
 
 
 # ///////////////////////////////////////////////////////////////////
@@ -62,9 +34,9 @@ tokens = make_tokens(vocab, size2word2legals, num_cats2word2sorted_legals[params
 
 def make_in_out_corr_mat(start, end):
     print('Making in_out_corr_mat with start={} and end={}'.format(start, end))
-    tokens_part = tokens[start:end]
+    tokens_part = toy_data.tokens[start:end]
     # types
-    types = sorted(set(tokens))
+    types = sorted(set(toy_data.tokens))
     num_types = len(types)
     type2id = {t: n for n, t in enumerate(types)}
     # ngrams
@@ -112,30 +84,23 @@ label2 = 'tokens between\n{:,} & {:,}'.format(start2, end2)
 in_out_corr_mat1, types1 = make_in_out_corr_mat(start1, end1)
 in_out_corr_mat2, types2 = make_in_out_corr_mat(start2, end2)
 
+# print results
+for mat in [in_out_corr_mat1.todense(),
+            in_out_corr_mat2.todense()]:  # pca is invariant to transposition
+    pca = PCA(svd_solver='full')
+    pca.fit(mat)
+    # console
+    print('total var={:,}'.format(np.var(mat, ddof=1, axis=0).sum().round(0)))  # total variance
+    for start, end in [(0, 31), (31, 64), (64, 1023)]:
+    # for start in np.arange(0, 1024, 32):
+    #     end = start + 32
+        print('start={} end={}'.format(start, end))
 
-def printout(fitted):
-    print('(  :31) sum of sing. values={:,} | %var={:.2f}'.format(
-        np.sum(fitted.singular_values_[:31]).round(0),
-        np.sum(fitted.explained_variance_ratio_[:31])))
-    print('(31:64) sum of sing. values={:,} | %var={:.2f}'.format(
-        np.sum(fitted.singular_values_[31:64]).round(0),
-        np.sum(fitted.explained_variance_ratio_[31:64])))
-    print('(64:  ) sum of sing. values={:,} | %var={:.2f}'.format(
-        np.sum(fitted.singular_values_[64:]).round(0),
-        np.sum(fitted.explained_variance_ratio_[64:])))
-
-
-# pca1
-print('Fitting PCA 1 ...')
-pca1 = PCA(n_components=None)
-pca1.fit(in_out_corr_mat1.todense())
-printout(pca1)
-
-# pca2
-print('Fitting PCA 2 ...')
-pca2 = PCA(n_components=None)
-pca2.fit_transform(in_out_corr_mat2.todense())
-printout(pca2)
+        print('var={:,} %var={:.2f} sgl-val={:,}'.format(
+            np.sum(pca.explained_variance_[start:end]).round(0),
+            np.sum(pca.explained_variance_ratio_[start:end]).round(2),
+            np.sum(pca.singular_values_[start:end]).round(0)))
+    print()
 
 print('\ntruncate_control={}'.format(params.truncate_control))
 
