@@ -8,10 +8,10 @@ from ludwigcluster.utils import list_all_param2vals
 
 NUM_CATS = 32
 
-DefaultParams.num_tokens = [1 * 10 ** 6]
+DefaultParams.num_tokens = [2 * 10 ** 6]
 DefaultParams.num_cats_list = [[NUM_CATS]]
 DefaultParams.truncate_num_cats = [NUM_CATS]
-DefaultParams.truncate_list = [[0.1, 0.1], [1.0, 1.0]]
+DefaultParams.truncate_list = [[0.5, 0.5], [1.0, 1.0]]
 
 
 for param2vals in list_all_param2vals(DefaultParams, update_d={'param_name': 'test', 'job_name': 'test'}):
@@ -26,7 +26,8 @@ for param2vals in list_all_param2vals(DefaultParams, update_d={'param_name': 'te
     probe2cat = toy_data.num_cats2probe2cat[NUM_CATS]
 
     # n-grams
-    ngrams = list(itertoolz.sliding_window(params.max_ngram_size + 1, toy_data.tokens))
+    ngram_size = params.max_ngram_size + 1
+    ngrams = list(itertoolz.sliding_window(ngram_size, toy_data.tokens))
     num_ngrams = len(set(ngrams))
-    print('num_ngrams={:,}'.format(num_ngrams))
+    print('num_{}-grams={:,}'.format(ngram_size, num_ngrams))
     print('------------------------------------------------------------')

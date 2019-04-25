@@ -57,7 +57,6 @@ class ToyData:
         self.vocab = self.make_vocab()
         self.num_vocab = len(self.vocab)
         self.word2id = {word: n for n, word in enumerate(self.vocab)}
-        self.probe2color = {}
         #
         self.size2word2node0 = self.make_size2word2node0()
         self.size2legals_mat = self.make_size2legals_mat()
@@ -65,7 +64,6 @@ class ToyData:
         self.legals_mat = self.size2legals_mat[self.params.structure_ngram_size]
         self.word2legals = self.size2word2legals[self.params.structure_ngram_size]
         #
-        self.num_cats2cmap = {num_cats: plt.cm.get_cmap('hsv', num_cats + 1) for num_cats in params.num_cats_list}
         self.z = self.make_z()
         self.probes = self.make_probes()
         self.num_cats2probe2cat = {num_cats: self.make_probe2cat(num_cats)
@@ -77,11 +75,15 @@ class ToyData:
                                             for num_cats in params.num_cats_list}
         self.num_cats2max_ba = self.make_num_cats2max_ba()
         #
+        self.num_cats2cmap = {num_cats: plt.cm.get_cmap('hsv', num_cats + 1)
+                              for num_cats in params.num_cats_list}
+        self.num_cats2probe2color = {num_cats: self.make_probe2color(num_cats)
+                                     for num_cats in params.num_cats_list}
+        for num_cats in self.params.num_cats_list:
+            self.plot_tree(num_cats) if config.Eval.plot_tree else None
+        #
         self.tokens = self.make_tokens()
         self.token_ids = [self.word2id[w] for w in self.tokens]
-
-        for num_cats in self.params.num_cats_list:  # TODO test
-            self.plot_tree(num_cats)
 
     def make_vocab(self):
         num_vocab = self.params.num_descendants ** self.params.num_levels
@@ -172,12 +174,18 @@ class ToyData:
         #
         assert num_cats % 2 == 0
         res = {}
-        cmap = self.num_cats2cmap[num_cats]
+
         for cat, cat_probes in enumerate(itertoolz.partition_all(num_members, self.probes)):
             assert len(cat_probes) == num_members
             res.update({p: cat for p in cat_probes})
-            for p in cat_probes:
-                self.probe2color[p] = to_hex(cmap(cat))
+        return res
+
+    def make_probe2color(self, num_cats):
+        res = {}
+        cmap = self.num_cats2cmap[num_cats]
+        for p in self.probes:
+            cat = self.num_cats2probe2cat[num_cats][p]
+            res[p] = to_hex(cmap(cat))
         return res
 
     def make_cat2legals(self, num_cats):
@@ -284,9 +292,11 @@ class ToyData:
         return res
 
     def plot_tree(self, num_cats):
+        probe2color = self.num_cats2probe2color[num_cats]
         link2color = {}
         for i, i12 in enumerate(self.z[:, :2].astype(int)):
-            c1, c2 = (link2color[x] if x > len(self.z) else self.probe2color[self.vocab[x.astype(int)]]
+            c1, c2 = (link2color[x] if x > len(self.z)
+                      else probe2color[self.vocab[x.astype(int)]]
                       for x in i12)
             link2color[i + 1 + len(self.z)] = c1 if c1 == c2 else 'grey'
         #
@@ -295,8 +305,8 @@ class ToyData:
         dg = dendrogram(self.z, ax=ax, color_threshold=None, link_color_func=lambda i: link2color[i])
         reordered_vocab = np.asarray(self.vocab)[dg['leaves']]
         ax.set_xticklabels([w if w in self.probes else '' for w in reordered_vocab], fontsize=6)
-        # assign color
-        probe2_cat = self.num_cats2probe2cat
+        # assign x tick label color
+        probe2_cat = self.num_cats2probe2cat[num_cats]
         colors = [to_hex(cmap(i)) for i in range(num_cats)]
         for n, w in enumerate(self.vocab):
             try:
@@ -305,7 +315,7 @@ class ToyData:
                 continue
             else:
                 color = colors[cat]
-                ax.get_xticklabels()[n].set_color(color)
+                ax.get_xticklabels()[n].set_color(color)  # TODO doesn't work
         plt.show()
         #
         # clustered_corr_mat = corr_mat[dg['leaves'], :]

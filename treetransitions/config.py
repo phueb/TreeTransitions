@@ -19,6 +19,7 @@ class Eval:
     debug = False
     calc_pp = False
     num_processes = 4
+    plot_tree = False
 
 
 class Graph:
