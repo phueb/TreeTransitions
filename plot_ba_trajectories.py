@@ -19,6 +19,8 @@ PLOT_NUM_CATS_LIST = [2, 32]
 
 default_dict = MatchParams.__dict__.copy()
 MatchParams.num_levels = [10]
+MatchParams.num_iterations = [500]
+MatchParams.num_partitions = [1]
 
 
 def gen_param_ps(param2requested, param2default):

@@ -35,21 +35,22 @@ params.parent_count = 1024
 params.num_tokens = 1 * 10 ** 5
 params.num_levels = 10
 params.e = 0.2
+params.num_cats_list = [NUM_CATS]
 params.truncate_num_cats = NUM_CATS
 params.truncate_list = [0.5, 1.0]
 
-toy_data = generate_toy_data(params, NUM_CATS)
-
+toy_data = generate_toy_data(params)
+probe2cat = toy_data.num_cats2probe2cat[NUM_CATS]
 
 
 # init
 print('Counting...')
 cats = set(probe2cat.values())
-word2cat2count = {w: {cat: 0 for cat in cats} for w in vocab}
-word2noncat_count = {t: 0 for t in vocab}
-word2count = {t: 0 for t in vocab}
-for n, token in enumerate(tokens[1:]):
-    prev_token = tokens[n-1]
+word2cat2count = {w: {cat: 0 for cat in cats} for w in toy_data.vocab}
+word2noncat_count = {t: 0 for t in toy_data.vocab}
+word2count = {t: 0 for t in toy_data.vocab}
+for n, token in enumerate(toy_data.tokens[1:]):
+    prev_token = toy_data.tokens[n-1]
     try:
         prev_cat = probe2cat[prev_token]
     except KeyError:
@@ -68,7 +69,7 @@ cat_var_ratios = []
 for cat in cats:
     num_after_cats = []
     num_totals = []
-    for word in vocab:
+    for word in toy_data.vocab:
         num_after_cat = word2cat2count[word][cat]
         num_total = word2count[word] + 1
         ratio = num_after_cat / num_total

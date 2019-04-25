@@ -31,13 +31,14 @@ params.parent_count = 1024
 params.num_tokens = 1 * 10 ** 6
 params.num_levels = 10
 params.e = 0.2
+params.num_cats_list = [NUM_CATS]
 params.truncate_num_cats = NUM_CATS
 params.truncate_list = [0.5, 1.0]  # [1.0, 1.0] is okay
-params.truncate_control = False  # TODO test this without list
-params.num_partitions = 2  # TODO test this
+params.truncate_control = False
+params.num_partitions = 2
 
 
-toy_data = generate_toy_data(params, NUM_CATS)
+toy_data = generate_toy_data(params)
 
 if SHUFFLE_TOKENS:
     print('WARNING: Shuffling tokens')

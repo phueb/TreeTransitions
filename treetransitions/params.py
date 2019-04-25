@@ -33,7 +33,7 @@ class DefaultParams:
     # input data
     truncate_control = [False]
     truncate_num_cats = [32]
-    truncate_list = [[0.5, 1.0], [1.0, 0.5]]
+    truncate_list = [[0.5, 0.5], [1.0, 1.0]]
     num_tokens = [5 * 10 ** 6]
     max_ngram_size = [1]
     num_descendants = [2]
