@@ -1,0 +1,63 @@
+from functools import partial
+
+import numpy as np
+from bayes_opt import BayesianOptimization
+from scipy import stats
+
+
+def calc_ba(probe_sims, probes, probe2cat, num_opt_init_steps=1, num_opt_steps=10):
+    def calc_signals(_probe_sims, _labels, thr):  # vectorized algorithm is 20X faster
+        probe_sims_clipped = np.clip(_probe_sims, 0, 1)
+        probe_sims_clipped_triu = probe_sims_clipped[np.triu_indices(len(probe_sims_clipped), k=1)]
+        predictions = np.zeros_like(probe_sims_clipped_triu, int)
+        predictions[np.where(probe_sims_clipped_triu > thr)] = 1
+        #
+        tp = float(len(np.where((predictions == _labels) & (_labels == 1))[0]))
+        tn = float(len(np.where((predictions == _labels) & (_labels == 0))[0]))
+        fp = float(len(np.where((predictions != _labels) & (_labels == 0))[0]))
+        fn = float(len(np.where((predictions != _labels) & (_labels == 1))[0]))
+        return tp, tn, fp, fn
+
+    # gold_mat
+    if not len(probes) == probe_sims.shape[0] == probe_sims.shape[1]:
+        raise RuntimeError(len(probes), probe_sims.shape[0], probe_sims.shape[1])
+    num_rows = len(probes)
+    num_cols = len(probes)
+    gold_mat = np.zeros((num_rows, num_cols))
+    for i in range(num_rows):
+        probe1 = probes[i]
+        for j in range(num_cols):
+            probe2 = probes[j]
+            if probe2cat[probe1] == probe2cat[probe2]:
+                gold_mat[i, j] = 1
+
+    # define calc_signals_partial
+    labels = gold_mat[np.triu_indices(len(gold_mat), k=1)]
+    calc_signals_partial = partial(calc_signals, probe_sims, labels)
+
+    def calc_probes_ba(thr):
+        tp, tn, fp, fn = calc_signals_partial(thr)
+        specificity = np.divide(tn + 1e-7, (tn + fp + 1e-7))
+        sensitivity = np.divide(tp + 1e-7, (tp + fn + 1e-7))  # aka recall
+        ba = (sensitivity + specificity) / 2  # balanced accuracy
+        return ba
+
+    # use bayes optimization to find best_thr
+    sims_mean = np.mean(probe_sims).item()
+    gp_params = {"alpha": 1e-5, "n_restarts_optimizer": 2}  # without this, warnings about predicted variance < 0
+    bo = BayesianOptimization(calc_probes_ba, {'thr': (0.0, 1.0)}, verbose=False)
+    bo.explore(
+        {'thr': [sims_mean]})  # keep bayes-opt at version 0.6 because 1.0 occasionally returns 0.50 wrongly
+    bo.maximize(init_points=num_opt_init_steps, n_iter=num_opt_steps,
+                acq="poi", xi=0.01, **gp_params)  # smaller xi: exploitation
+    best_thr = bo.res['max']['max_params']['thr']
+    # use best_thr
+    results = calc_probes_ba(best_thr)
+    res = np.mean(results)
+    return res
+
+
+def to_corr_mat(data_mat):
+    zscored = stats.zscore(data_mat, axis=0, ddof=1)
+    res = np.matmul(zscored.T, zscored)  # it matters which matrix is transposed
+    return res

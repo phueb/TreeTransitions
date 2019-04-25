@@ -6,59 +6,13 @@ import yaml
 import pandas as pd
 import sys
 
-from treetransitions.hierarchical_data_utils import make_tokens, make_probe_data, calc_ba, make_legal_mats, make_vocab
+from treetransitions.toy_data import ToyData
+from treetransitions.utils import calc_ba
 from treetransitions.rnn import RNN
 from treetransitions.params import ObjectView
 from treetransitions import config
 
 TRUNCATE_SIZE = 1
-
-
-def generate_toy_data(params):
-    toy_data = {}
-
-    vocab, word2id = make_vocab(params.num_descendants, params.num_levels)
-
-    # make underlying hierarchical structure
-    size2word2legals, ngram2legals_mat = make_legal_mats(
-        vocab, params.num_descendants, params.num_levels, params.mutation_prob, params.max_ngram_size)
-
-    # probes_data
-    num_cats2probe2cat = {}
-    num_cats2probes = {}
-    num_cats2max_ba = {}
-    num_cats2word2sorted_legals = {}
-    for num_cats in params.num_cats_list:
-        print('Getting {} categories with parent_count={}...'.format(num_cats, params.parent_count))
-        legals_mat = ngram2legals_mat[params.structure_ngram_size]
-        probes, probe2cat, word2sorted_legals = make_probe_data(
-            vocab, size2word2legals[TRUNCATE_SIZE], legals_mat, num_cats, params.parent_count, params.truncate_control)
-        num_cats2probe2cat[num_cats] = probe2cat
-        num_cats2probes[num_cats] = probes
-        print('Collected {} probes'.format(len(probes)))
-        # check probe sim
-        probe_acts1 = legals_mat[[word2id[p] for p in probes], :]
-        ba1 = calc_ba(cosine_similarity(probe_acts1), probes, probe2cat)
-        probe_acts2 = legals_mat[:, [word2id[p] for p in probes]].T
-        ba2 = calc_ba(cosine_similarity(probe_acts2), probes, probe2cat)
-        print('input-data row-wise ba={:.3f}'.format(ba1))
-        print('input-data col-wise ba={:.3f}'.format(ba2))
-        print()
-        num_cats2max_ba[num_cats] = ba2
-        num_cats2word2sorted_legals[num_cats] = word2sorted_legals
-
-    # sample tokens
-    tokens = make_tokens(vocab, size2word2legals, num_cats2word2sorted_legals[params.truncate_num_cats],
-                         params.num_tokens, params.max_ngram_size, params.truncate_list)
-    token_ids = [word2id[w] for w in tokens]
-
-    toy_data['tokens'] = tokens
-    toy_data['token_ids'] = token_ids
-    toy_data['vocab'] = vocab
-    toy_data['num_cats2probes'] = num_cats2probes
-    toy_data['num_cats2probe2cat'] = num_cats2probe2cat
-    res = ObjectView(toy_data)
-    return res
 
 
 def main_job(param2val, min_probe_freq=10):
@@ -72,12 +26,12 @@ def main_job(param2val, min_probe_freq=10):
         print('{}={}'.format(k, v))
     print()
 
-    toy_data = generate_toy_data(params)
+    toy_data = ToyData(params)
 
     # check probe frequency
     c = Counter(toy_data.tokens)
     for num_cats in params.num_cats_list:
-        for p in toy_data.num_cats2probes[num_cats]:
+        for p in toy_data.probes:
             # print('"{:<10}" {:>4}'.format(p, c[p]))  # check for bi-modality
             if c[p] < min_probe_freq:
                 print('WARNING: "{}" occurs only {} times'.format(p, c[p]))
@@ -102,15 +56,15 @@ def main_job(param2val, min_probe_freq=10):
             for num_cats in params.num_cats_list:
                 wx = srn.get_wx()  # TODO also test wy
                 #
-                probes = toy_data.num_cats2probes[num_cats]
-                probe2cat = toy_data.probe2cat[num_cats]
+                probes = toy_data.probes
+                probe2cat = toy_data.num_cats2probe2cat[num_cats]
                 p_acts = np.asarray([wx[toy_data.word2id[p], :] for p in probes])
                 ba = calc_ba(cosine_similarity(p_acts), probes, probe2cat)
                 num_cats2bas[num_cats].append(ba)
                 print('partition={:>2}/{:>2} | ba={:.3f} num_cats={}'.format(part_id, srn.num_partitions, ba, num_cats))
             #
-            print('partition={:>2}/{:>2} | before-training partition pp={:>5}\n'.format(
-                part_id, srn.num_partitions, pp))
+            print('partition={:>2}/{:>2} iteration {}/{} | before-training partition pp={:>5}\n'.format(
+                part_id, srn.num_partitions, iteration, params.num_iterations, pp))
             sys.stdout.flush()
             # train
             srn.train_partition(seqs_in_part, verbose=False)  # a seq is a list of mb_size token_ids

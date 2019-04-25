@@ -5,16 +5,17 @@ from cytoolz import itertoolz
 import matplotlib.pyplot as plt
 from sklearn.preprocessing import normalize
 
-from treetransitions.jobs import generate_toy_data
 from treetransitions.params import DefaultParams, ObjectView
+from treetransitions.toy_data import ToyData
 
 from ludwigcluster.utils import list_all_param2vals
 
 
 # fig
+PLOT_NUM_SVS = 64
 LEG_FONTSIZE = 16
 AX_FONTSIZE = 16
-FIGSIZE = (10, 4)
+FIGSIZE = (8, 8)
 DPI = None
 
 # in-out correlation matrix
@@ -35,10 +36,10 @@ params.num_cats_list = [NUM_CATS]
 params.truncate_num_cats = NUM_CATS
 params.truncate_list = [0.5, 1.0]  # [1.0, 1.0] is okay
 params.truncate_control = False
-params.num_partitions = 2
+params.num_partitions = 8  # TODO test this
 
 
-toy_data = generate_toy_data(params)
+toy_data = ToyData(params)
 
 if SHUFFLE_TOKENS:
     print('WARNING: Shuffling tokens')
@@ -47,10 +48,10 @@ if SHUFFLE_TOKENS:
 
 def plot_comparison(ys):
     fig, ax = plt.subplots(1, figsize=FIGSIZE, dpi=DPI)
-    plt.title('truncate_list={}'.format(
-        params.truncate_list), fontsize=AX_FONTSIZE)
+    plt.title('truncate_list={}\ntruncate_control={}\ntruncate_num_cats={}'.format(
+        params.truncate_list, params.truncate_control, params.truncate_num_cats), fontsize=AX_FONTSIZE)
     ax.set_ylabel('singular value', fontsize=AX_FONTSIZE)
-    ax.set_xlabel('Principal Component #', fontsize=AX_FONTSIZE)
+    ax.set_xlabel('Principal Component', fontsize=AX_FONTSIZE)
     ax.spines['right'].set_visible(False)
     ax.spines['top'].set_visible(False)
     ax.tick_params(axis='both', which='both', top=False, right=False)
@@ -124,7 +125,7 @@ for part in itertoolz.partition_all(part_size, toy_data.tokens):
             np.sum(pca.explained_variance_ratio_[start:end]).round(2),
             np.sum(pca.singular_values_[start:end]).round(0)))
     print()
-    singular_vals.append(pca.singular_values_)
+    singular_vals.append(pca.singular_values_[:PLOT_NUM_SVS])
 
 # plot
 plot_comparison(singular_vals)
