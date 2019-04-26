@@ -51,7 +51,6 @@ for param2vals in list_all_param2vals(DefaultParams, update_d={'param_name': 'te
     print('Counting...')
     cats = set(probe2cat.values())
     word2cat2count = {w: {cat: 0 for cat in cats} for w in toy_data.vocab}
-    word2noncat_count = {t: 0 for t in toy_data.vocab}
     word2count = {t: 0 for t in toy_data.vocab}
     for n, token in enumerate(toy_data.tokens[1:]):
         prev_token = toy_data.tokens[n-1]
@@ -60,11 +59,7 @@ for param2vals in list_all_param2vals(DefaultParams, update_d={'param_name': 'te
         except KeyError:
             prev_cat = None
         #
-        if prev_cat is None:
-            word2noncat_count[token] += 1
-        else:
-            word2cat2count[token][prev_cat] += 1
-        #
+        word2cat2count[token][prev_cat] += 1
         word2count[token] += 1
 
     print('Calculating coverage ratios...')
