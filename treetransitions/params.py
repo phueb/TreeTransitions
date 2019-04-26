@@ -19,7 +19,7 @@ class Params:
     num_cats_list = [[32]]
     structure_ngram_size = [1]
     # rnn
-    num_iterations = [5]
+    num_iterations = [100]
     num_partitions = [1]
     rnn_type =['srn']
     bptt = max_ngram_size

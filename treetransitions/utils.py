@@ -5,6 +5,13 @@ from bayes_opt import BayesianOptimization
 from scipy import stats
 
 
+def calc_kl_divergence(p, q, epsilon=0.00001):
+    pe = p + epsilon
+    qe = q + epsilon
+    divergence = np.sum(pe * np.log2(pe / qe))
+    return divergence
+
+
 def calc_ba(probe_sims, probes, probe2cat, num_opt_init_steps=1, num_opt_steps=10):
     def calc_signals(_probe_sims, _labels, thr):  # vectorized algorithm is 20X faster
         probe_sims_clipped = np.clip(_probe_sims, 0, 1)

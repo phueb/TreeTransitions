@@ -25,12 +25,12 @@ a more direct measurement might take into consideration the number of category m
 because "cream" might occur frequently with "ice" without occurring frequently with other members of the same category
 in which "ice" belongs 
 
-note: the coverage ratio approximates 1/NUM_CATS (when truncation is small)
+note: the coverage ratio converges on 1/NUM_CATS (as num_tokens increases)
 """
 
 NUM_CATS = 32
 
-DefaultParams.num_tokens = [2 * 10 ** 6]
+DefaultParams.num_tokens = [5 * 10 ** 6]
 DefaultParams.num_cats_list = [[NUM_CATS]]
 DefaultParams.truncate_num_cats = [NUM_CATS]
 DefaultParams.truncate_list = [[0.5, 0.5], [1.0, 1.0]]
@@ -75,13 +75,12 @@ for param2vals in list_all_param2vals(DefaultParams, update_d={'param_name': 'te
         num_totals = []
         for word in toy_data.vocab:
             num_after_cat = word2cat2count[word][cat]
-            num_total = word2count[word] + 1
-            ratio = num_after_cat / num_total
+            num_total = word2count[word]
             if num_after_cat > 0:  # only interested in words that influence category
                 num_after_cats.append(num_after_cat)
                 num_totals.append(num_total)
         #
-        ratios = [a / b for a, b in zip(num_after_cats, num_totals)]
+        ratios = [(a + 0.001) / (b + 0.001) for a, b in zip(num_after_cats, num_totals)]
         cat_mean_ratio = np.mean(ratios)
         cat_var_ratio = np.var(ratios)
         #

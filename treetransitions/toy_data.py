@@ -51,7 +51,7 @@ def make_chunk(vocab, chunk_id, size2word2legals, word2sorted_legals, num_start,
 
 
 class ToyData:
-    def __init__(self, params):
+    def __init__(self, params, max_ba=True):
         self.params = params
         self.ngram_sizes = range(1, self.params.max_ngram_size + 1)
         self.vocab = self.make_vocab()
@@ -73,7 +73,7 @@ class ToyData:
                                     for num_cats in params.num_cats_list}
         self.num_cats2word2sorted_legals = {num_cats: self.make_word2sorted_legals()
                                             for num_cats in params.num_cats_list}
-        self.num_cats2max_ba = self.make_num_cats2max_ba()
+        self.num_cats2max_ba = self.make_num_cats2max_ba() if max_ba else None
         #
         self.num_cats2cmap = {num_cats: plt.cm.get_cmap('hsv', num_cats + 1)
                               for num_cats in params.num_cats_list}

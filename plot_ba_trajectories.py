@@ -11,6 +11,7 @@ from treetransitions.params import DefaultParams as MatchParams
 
 VERBOSE = True
 
+X_STEP = 50
 YLIMs = None
 FIGSIZE = (10, 10)
 TITLE_FONTSIZE = 10
@@ -19,8 +20,10 @@ PLOT_NUM_CATS_LIST = [2, 32]
 
 default_dict = MatchParams.__dict__.copy()
 MatchParams.num_levels = [10]
-MatchParams.num_iterations = [500]
+MatchParams.num_iterations = [100]
 MatchParams.num_partitions = [1]
+MatchParams.learning_rate = [0.005]
+MatchParams.num_cats_list = [[32]]
 
 
 def gen_param_ps(param2requested, param2default):
@@ -70,7 +73,7 @@ def make_num_cats2bas(dfs):
     return res
 
 
-def plot_ba_trajs(d1, d2, title, num_steps=10):
+def plot_ba_trajs(d1, d2, title):
     fig, ax = plt.subplots(figsize=FIGSIZE, dpi=None)
     plt.title(title, fontsize=TITLE_FONTSIZE)
     ax.set_xlabel('Iteration')
@@ -88,7 +91,7 @@ def plot_ba_trajs(d1, d2, title, num_steps=10):
         if num_cats not in PLOT_NUM_CATS_LIST:
             continue
         num_bas = len(bas)
-        xticks = np.arange(0, num_bas + 1, num_steps)
+        xticks = np.arange(0, num_bas + 1, X_STEP)
         c = next(palette)
         ax.plot(bas, '-', color=c,
                 label='num_cats={}'.format(num_cats))
