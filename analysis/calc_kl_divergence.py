@@ -14,7 +14,7 @@ TITLE_FONTSIZE = 10
 
 NUM_CATS = 32
 
-DefaultParams.num_tokens = [2 * 10 ** 6]
+DefaultParams.num_seqs = [2 * 10 ** 6]
 DefaultParams.num_cats_list = [[2, 4, 8, 16, 32, 64, 128, 256, 512]]
 DefaultParams.truncate_num_cats = [NUM_CATS]
 DefaultParams.truncate_list = [[0.5, 0.5], [1.0, 1.0]]
@@ -51,7 +51,7 @@ for param2vals in list_all_param2vals(DefaultParams, update_d={'param_name': 'te
     toy_data = ToyData(params, max_ba=False)
 
     # mean_kl-divergences
-    w2freq = Counter(toy_data.tokens)
+    w2freq = Counter(toy_data.word_sequences_mat[:, -1])
     mean_klds = []
     for num_cats in params.num_cats_list:
         cat2legals = toy_data.num_cats2cat2legals[num_cats]

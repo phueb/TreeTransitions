@@ -8,6 +8,13 @@ from treetransitions.params import DefaultParams, ObjectView
 from ludwigcluster.utils import list_all_param2vals
 
 
+"""
+note: this analysis is only informative for toy data where tokens are sampled uniformly from legals.
+this means, this analysis shouldn't be used on CHILDES where this is not guaranteed
+
+"""
+
+
 FIGSIZE = (6, 6)
 TITLE_FONTSIZE = 12
 
@@ -16,24 +23,26 @@ NUM_CATS = 32
 DefaultParams.num_seqs = [2 * 10 ** 6]
 DefaultParams.num_cats_list = [[NUM_CATS]]
 DefaultParams.truncate_num_cats = [NUM_CATS]
-DefaultParams.truncate_list = [[0.5, 0.5], [1.0, 1.0]]
+DefaultParams.truncate_list = [[0.1, 0.1], [1.0, 1.0]]
 
 
-def plot_corrs(ys, title):
+def plot_rep_cov_density(mats, title):
     fig, ax = plt.subplots(figsize=FIGSIZE, dpi=None)
-    plt.title(title, fontsize=TITLE_FONTSIZE)
-    ax.set_xlabel('Category')
-    ax.set_ylabel('Correlation between coverage & repetition')
+    plt.title('Coverage-Repetition Density', fontsize=TITLE_FONTSIZE)
+    ax.set_xlabel('Category Member')
+    ax.set_ylabel('Probability')
     ax.spines['right'].set_visible(False)
     ax.spines['top'].set_visible(False)
     ax.tick_params(axis='both', which='both', top=False, right=False)
-    ax.yaxis.grid(True)
-    ax.set_ylim([0.8, 1.0])
-    ax.set_xticks([])
-    ax.set_xticklabels([])
+    ax.set_ylim([0, 2 / NUM_CATS])
     # plot
-    ax.plot(ys)
+    ax.axhline(y=1 / NUM_CATS, color='grey')
+    ax.axvline(x=NUM_CATS / 2, color='grey')
+    for mat, lab in zip(mats, labels):
+        row_sum = mat.sum(axis=0)
+        ax.plot(row_sum / row_sum.sum(), label=lab)  # TODO test
     #
+    plt.legend(frameon=False)
     plt.tight_layout()
     plt.show()
 
@@ -48,6 +57,8 @@ def make_bigram_count_mat(id_seqs_mat, num_vocab):
     return res
 
 
+cov_rep_mats = []
+labels = []
 for param2vals in list_all_param2vals(DefaultParams, update_d={'param_name': 'test', 'job_name': 'test'}):
 
     # params
@@ -59,27 +70,25 @@ for param2vals in list_all_param2vals(DefaultParams, update_d={'param_name': 'te
     toy_data = ToyData(params, max_ba=False)
     probe2cat = toy_data.num_cats2probe2cat[NUM_CATS]
     cats = set(probe2cat.values())
+    num_cats = len(cats)
+    num_members = params.parent_count // NUM_CATS
 
     bigram_count_mat = make_bigram_count_mat(toy_data.id_sequences_mat, toy_data.num_vocab)
 
-    corrs = []
+    # cov_rep_mat
+    print('Making cov_rep_mat...')
+    cov_rep_mat = np.zeros((num_cats, num_members))
     for cat in cats:
         cat_probes = [p for p in toy_data.probes if probe2cat[p] == cat]
-        cat_repetitions = []
-        cat_coverages = []
-        for col in bigram_count_mat.T:  # iterate over contexts
-            num_after_cat = [count if toy_data.vocab[word_id] in cat_probes else 0
-                             for word_id, count in enumerate(col)]
-            repetition = np.sum(num_after_cat)  # how often context occurs after category
-            coverage = np.count_nonzero(num_after_cat)  # how many members context occurs after
-            #
-            cat_repetitions.append(repetition)
-            cat_coverages.append(coverage)
+        row = [bigram_count_mat[toy_data.word2id[p]].sum() for p in cat_probes]
+        cov_rep_mat[cat] = np.sort(row)
 
-        corr = np.corrcoef(cat_repetitions, cat_coverages)[0, 1]
-        print(corr)
-        corrs.append(corr)
-
-    plot_corrs(corrs,
-               title='truncate_list={}'.format(params.truncate_list))
+    # collect
+    label = 'truncate_list={}'.format(params.truncate_list)
+    labels.append(label)
+    cov_rep_mats.append(cov_rep_mat)
     print('------------------------------------------------------')
+
+
+# plot
+plot_rep_cov_density(cov_rep_mats, labels)

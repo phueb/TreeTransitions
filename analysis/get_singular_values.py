@@ -1,7 +1,5 @@
 import numpy as np
 from sklearn.decomposition import PCA
-from scipy import sparse
-from cytoolz import itertoolz
 import matplotlib.pyplot as plt
 from sklearn.preprocessing import normalize
 
@@ -19,31 +17,25 @@ FIGSIZE = (8, 8)
 DPI = None
 
 # in-out correlation matrix
-NGRAM_SIZE_REPRESENTATION = 1
 BINARY = False
 
 # toy data
 TRUNCATE_SIZE = 1
 NUM_CATS = 32
-SHUFFLE_TOKENS = False  # TODO careful here
 
 params = ObjectView(list_all_param2vals(DefaultParams, update_d={'param_name': 'test', 'job_name': 'test'})[0])
 params.parent_count = 1024
-params.num_tokens = 1 * 10 ** 6
+params.num_seqs = 1 * 10 ** 6
 params.num_levels = 10
 params.e = 0.2
 params.num_cats_list = [NUM_CATS]
 params.truncate_num_cats = NUM_CATS
 params.truncate_list = [0.5, 1.0]  # [1.0, 1.0] is okay
 params.truncate_control = False
-params.num_partitions = 8  # TODO test this
+params.num_partitions = 8
 
 
 toy_data = ToyData(params)
-
-if SHUFFLE_TOKENS:
-    print('WARNING: Shuffling tokens')
-    np.random.shuffle(toy_data.tokens)
 
 
 def plot_comparison(ys):
@@ -63,55 +55,20 @@ def plot_comparison(ys):
     plt.show()
 
 
-def make_in_out_corr_mat(tokens_part):
-    print('Making in_out_corr_mat with partition sized={}'.format(len(tokens_part)))
-    # types
-    types = sorted(set(toy_data.tokens))
-    num_types = len(types)
-    type2id = {t: n for n, t in enumerate(types)}
-    # ngrams
-    ngrams = list(itertoolz.sliding_window(NGRAM_SIZE_REPRESENTATION, tokens_part))
-    ngram_types = sorted(set(ngrams))
-    num_ngram_types = len(ngram_types)
-    ngram2id = {t: n for n, t in enumerate(ngram_types)}
-    # make sparse matrix (types in rows, ngrams in cols)
-    shape = (num_types, num_ngram_types)
-    print('Making In-Out matrix with shape={}...'.format(shape))
-    data = []
-    row_ids = []
-    cold_ids = []
-    mat_loc2freq = {}  # to keep track of number of ngram & type co-occurrence
-    for n, ngram in enumerate(ngrams[:-NGRAM_SIZE_REPRESENTATION]):
-        # row_id + col_id
-        col_id = ngram2id[ngram]
-        next_ngram = ngrams[n + 1]
-        next_type = next_ngram[-1]
-        row_id = type2id[next_type]
-        # freq
-        try:
-            freq = mat_loc2freq[(row_id, col_id)]
-        except KeyError:
-            mat_loc2freq[(row_id, col_id)] = 1
-            freq = 1
-        else:
-            mat_loc2freq[(row_id, col_id)] += 1
-        # collect
-        row_ids.append(row_id)
-        cold_ids.append(col_id)
-        data.append(1 if BINARY else freq)
-    # make sparse matrix once (updating it is expensive)
-    res = sparse.csr_matrix((data, (row_ids, cold_ids)), shape=(num_types, num_ngram_types))
+def make_bigram_count_mat(id_seqs_mat):
+    assert id_seqs_mat.shape[1] == 2  # works with bi-grams only
+    print('Making In-Out matrix with shape={}...'.format(id_seqs_mat.shape))
+    res = np.zeros((toy_data.num_vocab, toy_data.num_vocab))
+    for row_id, col_id in zip(id_seqs_mat[:, 0], id_seqs_mat[:, 1]):
+        res[row_id, col_id] += 1
     return res
 
 
 # print results
 singular_vals = []
-part_size = params.num_tokens // params.num_partitions
-for part in itertoolz.partition_all(part_size, toy_data.tokens):
-    if len(part) != part_size:
-            continue
-    in_out_corr_mat = make_in_out_corr_mat(part)
-    mat = normalize(in_out_corr_mat, axis=1, norm='l2', copy=False).todense()
+for id_seq_mat_chunk in np.vsplit(toy_data.id_sequences_mat, params.num_partitions):
+    in_out_corr_mat = make_bigram_count_mat(id_seq_mat_chunk)
+    mat = normalize(in_out_corr_mat, axis=1, norm='l2', copy=False)
     #
     pca = PCA(svd_solver='full')  # pca is invariant to transposition
     pca.fit(mat)
@@ -131,7 +88,6 @@ for part in itertoolz.partition_all(part_size, toy_data.tokens):
 plot_comparison(singular_vals)
 
 print('\ntruncate_control={}'.format(params.truncate_control))
-print('\nSHUFFLING_TOKENS={}'.format(SHUFFLE_TOKENS))
 
 
 

@@ -13,39 +13,34 @@ from treetransitions.utils import to_corr_mat, calc_ba
 from treetransitions import config
 
 
-def make_chunk(vocab, chunk_id, size2word2legals, word2sorted_legals, num_start, chunk_size, truncate,
-               random_interval=np.nan):
+def make_sequences_chunk(vocab, chunk_id, size2word2legals, word2sorted_legals, num_seqs, truncate):
     if chunk_id % config.Eval.num_processes == 0:
-        print('\nMaking tokens chunk with truncate={}'.format(truncate))
+        print('\nMaking sequences chunk with truncate={}'.format(truncate))
     #
-    res = np.random.choice(vocab, size=num_start).tolist()  # prevents indexError at start
-    pbar = pyprind.ProgBar(chunk_size) if chunk_id % config.Eval.num_processes == 0 else None
-    for loc in range(chunk_size):
-        # append random word to break structure into pseudo-sentences
-        if loc % random_interval == 0:
-            new_token = np.random.choice(vocab, size=1).item()
-            res.append(new_token)
-            continue
-        # append word which is constrained by hierarchical structure
+    res = []
+    pbar = pyprind.ProgBar(num_seqs) if chunk_id % config.Eval.num_processes == 0 else None
+    for start_token in np.random.choice(vocab, size=num_seqs):
+        seq = [start_token]
+        # get words which are legal to come next
+        legals_set = set(vocab)
+        for size, word2legals in size2word2legals.items():
+            previous_token = seq[-size]
+            #
+            sorted_legals = word2sorted_legals[previous_token]
+            legals = word2legals[previous_token]
+            #
+            num_truncated = int(len(sorted_legals) * truncate)
+            legals_set.intersection_update(legals)
+            legals_set.intersection_update(sorted_legals[-num_truncated:])  # truncate from end
+        # sample from legals
+        try:
+            new_token = np.random.choice(list(legals_set), size=1, p=None).item()
+        except ValueError:  # no legals
+            raise RuntimeError('No legal next word available. Increase mutation_prob')
         else:
-            # get words which are legal to come next
-            legals_set = set(vocab)
-            for size, word2legals in size2word2legals.items():
-                previous_token = res[-size]
-                #
-                sorted_legals = word2sorted_legals[previous_token]
-                legals = word2legals[previous_token]
-                #
-                num_truncated = int(len(sorted_legals) * truncate)
-                legals_set.intersection_update(legals)
-                legals_set.intersection_update(sorted_legals[-num_truncated:])  # truncate from end
-            # sample from legals
-            try:
-                new_token = np.random.choice(list(legals_set), size=1, p=None).item()
-            except ValueError:  # no legals
-                raise RuntimeError('No legal next word available. Increase mutation_prob')
-            # collect
-            res.append(new_token)
+            seq.append(new_token)
+        # collect
+        res.append(seq)
         pbar.update() if chunk_id % config.Eval.num_processes == 0 else None
     return res
 
@@ -82,8 +77,9 @@ class ToyData:
         for num_cats in self.params.num_cats_list:
             self.plot_tree(num_cats) if config.Eval.plot_tree else None
         #
-        self.tokens = self.make_tokens()
-        self.token_ids = [self.word2id[w] for w in self.tokens]
+        self.word_sequences_mat = self.make_sequences()
+        self.id_sequences_mat = np.asarray([self.word2id[w] for w in np.hstack(self.word_sequences_mat)]).reshape(
+            np.shape(self.word_sequences_mat))
 
     def make_vocab(self):
         num_vocab = self.params.num_descendants ** self.params.num_levels
@@ -196,7 +192,7 @@ class ToyData:
             res[cat] += legals
         return res
 
-    # /////////////////////////////////////////////////////////////// tokens
+    # /////////////////////////////////////////////////////////////// sequences
 
     def make_word2sorted_legals(self):
         assert isinstance(self.params.truncate_control, bool)  # if [False], it would incorrectly evaluate to True
@@ -236,9 +232,9 @@ class ToyData:
                                         np.random.binomial(n=2, p=1 - self.params.mutation_prob, size=s))]
         return nodes
 
-    def make_tokens(self, num_chunks=32):
+    def make_sequences(self):
         """
-        generate text by adding one word at a time to a list of words.
+        a sequence is like a document - no statistical regularities span across document boundaries
         each word is constrained by the legals matrices - which are hierarchical -
         and determine the legal successors for each word in the vocabulary.
         there is one legal matrix for each ngram (in other words, for each distance up to max_ngram_size)
@@ -248,31 +244,37 @@ class ToyData:
         because perplexity indicates the number of choices from a random uniformly distributed set of choices
         """
         num_processes = config.Eval.num_processes
-        # make tokens - in parallel
+        # make sequences - in parallel
         pool = mp.Pool(processes=num_processes)
         min_truncate, max_truncate = self.params.truncate_list
+        num_chunks = self.params.mb_size  # this is convenient but the 2 don't have to be equivalent
         truncate_steps = np.linspace(min_truncate, max_truncate, num_chunks + 2)[1:-1]
-        chunk_size = self.params.num_tokens // num_chunks
+        num_seqs_in_chunk = self.params.num_seqs // num_chunks
         word2sorted_legals = self.num_cats2word2sorted_legals[self.params.truncate_num_cats]
         results = [pool.apply_async(
-            make_chunk,
+            make_sequences_chunk,
             args=(self.vocab, chunk_id, self.size2word2legals, word2sorted_legals,
-                  self.params.max_ngram_size, chunk_size, truncate_steps[chunk_id]))
+                  num_seqs_in_chunk, truncate_steps[chunk_id]))
             for chunk_id in range(num_chunks)]
-        tokens = []
-        print('Creating tokens from hierarchical dependency structure...')
+        res = []
+        print('Creating sequences...')
         try:
-            for n, res in enumerate(results):
-                tokens_chunk = res.get()
+            for n, r in enumerate(results):
+                chunk = r.get()
                 if n % num_processes == 0:
-                    print('\nnum types in tokens_chunk={}'.format(len(set(tokens_chunk))))
-                tokens += tokens_chunk
+                    print('\nnum types in chunk={}'.format(len(set(np.hstack(chunk)))))
+                res += chunk
             pool.close()
         except KeyboardInterrupt:
             pool.close()
             raise SystemExit('Interrupt occurred during multiprocessing. Closed worker pool.')
         print('Done')
-        return tokens
+        return np.asarray(res)
+
+    def gen_part_id_seqs(self):
+        for part_seq in np.vsplit(self.id_sequences_mat, self.params.num_partitions):
+            print('Shape of part_id_seq={}'.format(part_seq.shape))
+            yield part_seq
 
     # //////////////////////////////////////////////////////////// misc
 

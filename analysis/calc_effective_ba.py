@@ -8,7 +8,7 @@ from ludwigcluster.utils import list_all_param2vals
 
 NUM_CATS = 32
 
-DefaultParams.num_tokens = [2 * 10 ** 6]
+DefaultParams.num_seqs = [2 * 10 ** 6]
 DefaultParams.num_cats_list = [[NUM_CATS]]
 DefaultParams.truncate_num_cats = [NUM_CATS]
 DefaultParams.truncate_list = [[0.1, 0.1], [1.0, 1.0]]

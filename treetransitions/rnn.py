@@ -1,7 +1,6 @@
 import torch
 import time
 import numpy as np
-from cytoolz import itertoolz
 
 
 class RNN:
@@ -10,61 +9,35 @@ class RNN:
                  params,
                  num_eval_steps=1,
                  init_range=0.01,
-                 num_seqs_in_batch=1,
                  num_layers=1,
                  dropout_prob=0.0,
                  grad_clip=None):
-        # input
         self.input_size = input_size
-        self.pad_id = 0
-        # rnn
-        self.rnn_type = params.rnn_type
-        self.num_hiddens = params.num_hiddens
-        self.num_partitions = params.num_partitions
-        self.bptt = params.bptt
-        self.learning_rate = params.learning_rate
-        self.optimization = params.optimization
-
+        self.params = params
         self.num_eval_steps = num_eval_steps
         self.dropout_prob = dropout_prob
         self.num_layers = num_layers
         self.grad_clip = grad_clip
-        self.num_seqs_in_batch = num_seqs_in_batch
         self.init_range = init_range
         #
-        self.model = TorchRNN(self.rnn_type, self.num_layers, self.input_size, self.num_hiddens, self.init_range)
+        self.model = TorchRNN(self.params.rnn_type, self.num_layers,
+                              self.input_size, self.params.num_hiddens, self.init_range)
         self.model.cuda()  # call this before constructing optimizer
         self.criterion = torch.nn.CrossEntropyLoss()
-        if self.optimization == 'adagrad':
-            self.optimizer = torch.optim.Adagrad(self.model.parameters(), lr=self.learning_rate)
-        elif self.optimization == 'sgd':
-            self.optimizer = torch.optim.SGD(self.model.parameters(), lr=self.learning_rate)
+        if self.params.optimization == 'adagrad':
+            self.optimizer = torch.optim.Adagrad(self.model.parameters(), lr=self.params.learning_rate)
+        elif self.params.optimization == 'sgd':
+            self.optimizer = torch.optim.SGD(self.model.parameters(), lr=self.params.learning_rate)
         else:
             raise AttributeError('Invalid arg to "optimizer"')
 
-    def to_windows(self, seq):
-        padded = [self.pad_id] * self.bptt + seq
-        bptt_p1 = self.bptt + 1
-        seq_len = len(seq)
-        windows = [padded[i: i + bptt_p1] for i in range(seq_len)]
-        return windows
-
-    def gen_batches(self, seqs, num_seqs_in_batch=None):
-        """
-        a batch, by default, contains all windows in a single sequence.
-        setting "num_seqs_in_batch" larger than 1, will include all windows in "num_seqs_in_batch" sequences
-        """
-        if num_seqs_in_batch is None:
-            num_seqs_in_batch = self.num_seqs_in_batch
-        windowed_seqs = [self.to_windows(seq) for seq in seqs]
-        if len(windowed_seqs) % num_seqs_in_batch != 0:
-            raise RuntimeError('Set number of sequences in batch to factor of number of sequences {}.'.format(
-                len(seqs)))
-        for windowed_seqs_partition in itertoolz.partition_all(num_seqs_in_batch, windowed_seqs):
-            batch = np.vstack(windowed_seqs_partition)
+    def gen_batches(self, seqs):
+        size = len(seqs) / self.params.mb_size
+        assert size.is_integer()
+        for batch in np.vsplit(seqs, size):
             yield batch
 
-    def train_partition(self, seqs, verbose):
+    def train_partition(self, seqs, verbose):  # seqs must be 2D array
         """
         each batch contains all windows in a sequence.
         hidden states are never saved. not across windows, and not across sequences.
@@ -72,11 +45,12 @@ class RNN:
         """
         start_time = time.time()
         self.model.train()
-
         for step, batch in enumerate(self.gen_batches(seqs)):
             self.model.batch_size = len(batch)  # dynamic batch size
             x = batch[:, :-1]
             y = batch[:, -1]
+
+            # print(x.shape)
 
             # forward step
             inputs = torch.cuda.LongTensor(x.T)  # requires [num_steps, mb_size]
@@ -91,7 +65,7 @@ class RNN:
             if self.grad_clip is not None:
                 torch.nn.utils.clip_grad_norm_(self.model.parameters(), self.grad_clip)
                 for p in self.model.parameters():
-                    p.data.add_(-self.learning_rate, p.grad.data)
+                    p.data.add_(-self.params.learning_rate, p.grad.data)
             else:
                 self.optimizer.step()
 
@@ -129,11 +103,10 @@ class RNN:
 
     def calc_logits(self, seqs):
         self.model.eval()  # protects from dropout
-        all_windows = np.vstack([self.to_windows(seq) for seq in seqs])
-        self.model.batch_size = len(all_windows)
+        self.model.batch_size = len(seqs)
 
         # prepare inputs
-        x = all_windows[:, :-1]
+        x = seqs[:, :-1]
         inputs = torch.LongTensor(x.T)  # requires [num_steps, mb_size]
 
         # forward pass
