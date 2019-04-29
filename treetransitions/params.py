@@ -9,7 +9,7 @@ class Params:
     # input data
     truncate_control = [False]
     truncate_num_cats = [32]
-    truncate_list = [[1.0, 1.0], [0.5, 0.5]]
+    truncate_list = [[0.5, 1.0], [1.0, 0.5]]
     num_seqs = [5 * 10 ** 6]
     max_ngram_size = [1]
     num_descendants = [2]  # 2
@@ -19,8 +19,8 @@ class Params:
     num_cats_list = [[2, 32]]
     structure_ngram_size = [1]
     # rnn
-    num_iterations = [20]
-    num_partitions = [1]
+    num_iterations = [5]
+    num_partitions = [8]
     rnn_type = ['srn']
     bptt = max_ngram_size
     mb_size = [64]
@@ -33,7 +33,7 @@ class DefaultParams:
     # input data
     truncate_control = [False]
     truncate_num_cats = [32]
-    truncate_list = [[0.5, 0.5], [1.0, 1.0]]
+    truncate_list = [[0.5, 1.0], [1.0, 0.5]]
     num_seqs = [5 * 10 ** 6]
     max_ngram_size = [1]
     num_descendants = [2]
@@ -43,8 +43,8 @@ class DefaultParams:
     num_cats_list = [[2, 32]]
     structure_ngram_size = [1]
     # rnn
-    num_iterations = [20]
-    num_partitions = [1]
+    num_iterations = [5]
+    num_partitions = [8]
     rnn_type =['srn']
     bptt = max_ngram_size
     mb_size = [64]

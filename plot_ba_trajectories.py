@@ -11,7 +11,7 @@ from treetransitions.params import DefaultParams as MatchParams
 
 VERBOSE = True
 
-X_STEP = 50
+X_STEP = 10
 YLIMs = None
 FIGSIZE = (10, 10)
 TITLE_FONTSIZE = 10

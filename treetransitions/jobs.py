@@ -29,7 +29,6 @@ def main_job(param2val, min_probe_freq=10):
     # check probe frequency
     c = Counter(toy_data.word_sequences_mat.flatten())
     for p in toy_data.probes:
-        print('"{:<10}" {:>4}'.format(p, c[p]))  # check for bi-modality
         if c[p] < min_probe_freq:
             print('WARNING: "{}" occurs only {} times'.format(p, c[p]))
 

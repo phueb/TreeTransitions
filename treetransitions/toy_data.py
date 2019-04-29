@@ -232,7 +232,7 @@ class ToyData:
                                         np.random.binomial(n=2, p=1 - self.params.mutation_prob, size=s))]
         return nodes
 
-    def make_sequences(self):
+    def make_sequences(self, num_chunks=32):
         """
         a sequence is like a document - no statistical regularities span across document boundaries
         each word is constrained by the legals matrices - which are hierarchical -
@@ -247,7 +247,6 @@ class ToyData:
         # make sequences - in parallel
         pool = mp.Pool(processes=num_processes)
         min_truncate, max_truncate = self.params.truncate_list
-        num_chunks = self.params.mb_size  # this is convenient but the 2 don't have to be equivalent
         truncate_steps = np.linspace(min_truncate, max_truncate, num_chunks + 2)[1:-1]
         num_seqs_in_chunk = self.params.num_seqs // num_chunks
         word2sorted_legals = self.num_cats2word2sorted_legals[self.params.truncate_num_cats]
@@ -269,7 +268,12 @@ class ToyData:
             pool.close()
             raise SystemExit('Interrupt occurred during multiprocessing. Closed worker pool.')
         print('Done')
-        return np.asarray(res)
+        # make divisible
+        num_remainder = len(res) % (self.params.mb_size * self.params.num_partitions)
+        num_divisible = len(res) - num_remainder
+        print('Shortened num_seqs to {:,}'.format(num_divisible))
+        assert len(res) % self.params.mb_size == 0.0
+        return np.asarray(res)[:num_divisible]
 
     def gen_part_id_seqs(self):
         for part_seq in np.vsplit(self.id_sequences_mat, self.params.num_partitions):
