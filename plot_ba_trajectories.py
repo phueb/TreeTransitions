@@ -11,7 +11,7 @@ from treetransitions.params import DefaultParams as MatchParams
 
 VERBOSE = True
 
-X_STEP = 10
+X_STEP = 100
 YLIMs = None
 FIGSIZE = (10, 10)
 TITLE_FONTSIZE = 10
@@ -20,10 +20,11 @@ PLOT_NUM_CATS_LIST = [2, 32]
 
 default_dict = MatchParams.__dict__.copy()
 MatchParams.num_levels = [10]
-MatchParams.num_iterations = [20]
+MatchParams.num_iterations = [500]
 MatchParams.num_partitions = [1]
-MatchParams.learning_rate = [0.002]
-MatchParams.num_cats_list = [[2, 32]]
+MatchParams.learning_rate = [0.005]
+MatchParams.num_cats_list = [[32]]
+MatchParams.truncate_list = [[0.5, 0.5], [1.0, 1.0]]
 
 
 def gen_param_ps(param2requested, param2default):

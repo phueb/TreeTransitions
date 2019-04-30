@@ -77,9 +77,10 @@ class ToyData:
         for num_cats in self.params.num_cats_list:
             self.plot_tree(num_cats) if config.Eval.plot_tree else None
         #
-        self.word_sequences_mat = self.make_sequences()
-        self.id_sequences_mat = np.asarray([self.word2id[w] for w in np.hstack(self.word_sequences_mat)]).reshape(
-            np.shape(self.word_sequences_mat))
+        self.word_sequences = self.make_sequences()
+        self.num_seqs = len(self.word_sequences)  # divisible by mb_size and num_partitions
+        self.id_sequences_mat = np.asarray([[self.word2id[w] for w in seq]
+                                            for seq in self.word_sequences]).reshape((self.num_seqs, -1))
 
     def make_vocab(self):
         num_vocab = self.params.num_descendants ** self.params.num_levels
@@ -273,7 +274,7 @@ class ToyData:
         num_divisible = len(res) - num_remainder
         print('Shortened num_seqs to {:,}'.format(num_divisible))
         assert len(res) % self.params.mb_size == 0.0
-        return np.asarray(res)[:num_divisible]
+        return res[:num_divisible]
 
     def gen_part_id_seqs(self):
         for part_seq in np.vsplit(self.id_sequences_mat, self.params.num_partitions):

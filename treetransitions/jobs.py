@@ -1,7 +1,5 @@
-from cytoolz import itertoolz
 from sklearn.metrics.pairwise import cosine_similarity
 import numpy as np
-from collections import Counter
 import yaml
 import pandas as pd
 import sys
@@ -25,12 +23,6 @@ def main_job(param2val, min_probe_freq=10):
     print()
 
     toy_data = ToyData(params)
-
-    # check probe frequency
-    c = Counter(toy_data.word_sequences_mat.flatten())
-    for p in toy_data.probes:
-        if c[p] < min_probe_freq:
-            print('WARNING: "{}" occurs only {} times'.format(p, c[p]))
 
     # train loop
     srn = RNN(toy_data.num_vocab, params)

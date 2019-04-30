@@ -25,9 +25,7 @@ NUM_CATS = 32
 
 params = ObjectView(list_all_param2vals(DefaultParams, update_d={'param_name': 'test', 'job_name': 'test'})[0])
 params.parent_count = 1024
-params.num_seqs = 1 * 10 ** 6
-params.num_levels = 10
-params.e = 0.2
+params.num_seqs = 5 * 10 ** 6
 params.num_cats_list = [NUM_CATS]
 params.truncate_num_cats = NUM_CATS
 params.truncate_list = [0.5, 1.0]  # [1.0, 1.0] is okay

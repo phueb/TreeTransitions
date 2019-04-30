@@ -66,7 +66,6 @@ for param2vals in list_all_param2vals(DefaultParams, update_d={'param_name': 'te
     probe2cat = toy_data.num_cats2probe2cat[NUM_CATS]
     cats = set(probe2cat.values())
     num_cats = len(cats)
-    num_members = params.parent_count // NUM_CATS
 
     bigram_count_mat = make_bigram_count_mat(toy_data.id_sequences_mat, toy_data.num_vocab)
 
