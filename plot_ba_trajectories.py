@@ -20,9 +20,10 @@ PLOT_NUM_CATS_LIST = [2, 32]
 
 default_dict = MatchParams.__dict__.copy()
 MatchParams.num_levels = [10]
-MatchParams.num_iterations = [500]
+MatchParams.num_iterations = [200]
 MatchParams.num_partitions = [1]
-MatchParams.learning_rate = [0.005]
+MatchParams.num_seqs = [10 * 10 ** 6]
+MatchParams.learning_rate = [0.003]
 MatchParams.num_cats_list = [[32]]
 MatchParams.truncate_list = [[0.5, 0.5], [1.0, 1.0]]
 
