@@ -26,6 +26,7 @@ MatchParams.num_seqs = [10 * 10 ** 6]
 MatchParams.learning_rate = [0.003]
 MatchParams.num_cats_list = [[32]]
 MatchParams.truncate_list = [[0.5, 0.5], [1.0, 1.0]]
+MatchParams.truncate_control = [False]
 
 
 def gen_param_ps(param2requested, param2default):

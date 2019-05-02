@@ -17,30 +17,21 @@ def make_sequences_chunk(vocab, chunk_id, size2word2legals, word2sorted_legals, 
     if chunk_id % config.Eval.num_processes == 0:
         print('\nMaking sequences chunk with truncate={}'.format(truncate))
     #
-    res = []
+    seq_size = len(size2word2legals) + 1
+    assert seq_size == 2  # currently only works for seq_size = 2
+    word2legals = size2word2legals[1]  # currently only works for seq_size = 2
+    res = np.random.choice(vocab, size=(num_seqs, seq_size))
     pbar = pyprind.ProgBar(num_seqs) if chunk_id % config.Eval.num_processes == 0 else None
-    for start_token in np.random.choice(vocab, size=num_seqs):
-        seq = [start_token]
+    for seq in res:
         # get words which are legal to come next
-        legals_set = set(vocab)
-        for size, word2legals in size2word2legals.items():
-            previous_token = seq[-size]
-            #
-            sorted_legals = word2sorted_legals[previous_token]
-            legals = word2legals[previous_token]
-            #
-            num_truncated = int(len(sorted_legals) * truncate)
-            legals_set.intersection_update(legals)
-            legals_set.intersection_update(sorted_legals[-num_truncated:])  # truncate from end
+        context_word = seq[0]
+        sorted_legals = word2sorted_legals[context_word]
+        num_truncated = int(len(sorted_legals) * truncate)
+        legals_set = set(sorted_legals[:num_truncated])
+        legals_set.intersection_update(word2legals[context_word])
         # sample from legals
-        try:
-            new_token = np.random.choice(list(legals_set), size=1, p=None).item()
-        except ValueError:  # no legals
-            raise RuntimeError('No legal next word available. Increase mutation_prob')
-        else:
-            seq.append(new_token)
-        # collect
-        res.append(seq)
+        new_token = np.random.choice(list(legals_set), size=1, p=None).item()
+        seq[-1] = new_token
         pbar.update() if chunk_id % config.Eval.num_processes == 0 else None
     return res
 
@@ -77,10 +68,10 @@ class ToyData:
         for num_cats in self.params.num_cats_list:
             self.plot_tree(num_cats) if config.Eval.plot_tree else None
         #
-        self.word_sequences = self.make_sequences()
-        self.num_seqs = len(self.word_sequences)  # divisible by mb_size and num_partitions
+        self.word_sequences_mat = self.make_sequences_mat()
+        self.num_seqs = len(self.word_sequences_mat)  # divisible by mb_size and num_partitions
         self.id_sequences_mat = np.asarray([[self.word2id[w] for w in seq]
-                                            for seq in self.word_sequences]).reshape((self.num_seqs, -1))
+                                            for seq in self.word_sequences_mat]).reshape((self.num_seqs, -1))
 
     def make_vocab(self):
         num_vocab = self.params.num_descendants ** self.params.num_levels
@@ -233,7 +224,7 @@ class ToyData:
                                         np.random.binomial(n=2, p=1 - self.params.mutation_prob, size=s))]
         return nodes
 
-    def make_sequences(self, num_chunks=32):
+    def make_sequences_mat(self, num_chunks=32):
         """
         a sequence is like a document - no statistical regularities span across document boundaries
         each word is constrained by the legals matrices - which are hierarchical -
@@ -256,25 +247,27 @@ class ToyData:
             args=(self.vocab, chunk_id, self.size2word2legals, word2sorted_legals,
                   num_seqs_in_chunk, truncate_steps[chunk_id]))
             for chunk_id in range(num_chunks)]
-        res = []
+        chunks = []
         print('Creating sequences...')
         try:
             for n, r in enumerate(results):
                 chunk = r.get()
                 if n % num_processes == 0:
                     print('\nnum types in chunk={}'.format(len(set(np.hstack(chunk)))))
-                res += chunk
+                chunks.append(chunk)
             pool.close()
         except KeyboardInterrupt:
             pool.close()
             raise SystemExit('Interrupt occurred during multiprocessing. Closed worker pool.')
         print('Done')
+        # stack
+        stacked = np.vstack(chunks)
         # make divisible
-        num_remainder = len(res) % (self.params.mb_size * self.params.num_partitions)
-        num_divisible = len(res) - num_remainder
+        num_remainder = len(stacked) % (self.params.mb_size * self.params.num_partitions)
+        num_divisible = len(stacked) - num_remainder
         print('Shortened num_seqs to {:,}'.format(num_divisible))
-        assert len(res) % self.params.mb_size == 0.0
-        return res[:num_divisible]
+        assert len(stacked) % self.params.mb_size == 0.0
+        return stacked[:num_divisible]
 
     def gen_part_id_seqs(self):
         for part_seq in np.vsplit(self.id_sequences_mat, self.params.num_partitions):

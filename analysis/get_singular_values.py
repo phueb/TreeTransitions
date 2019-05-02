@@ -10,7 +10,7 @@ from ludwigcluster.utils import list_all_param2vals
 
 
 # fig
-PLOT_NUM_SVS = 64
+PLOT_NUM_SVS = 128
 LEG_FONTSIZE = 16
 AX_FONTSIZE = 16
 FIGSIZE = (8, 8)

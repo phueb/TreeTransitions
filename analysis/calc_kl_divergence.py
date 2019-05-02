@@ -51,7 +51,7 @@ for param2vals in list_all_param2vals(DefaultParams, update_d={'param_name': 'te
     toy_data = ToyData(params, max_ba=False)
 
     # mean_kl-divergences
-    w2freq = Counter(toy_data.word_sequences[:, -1])
+    w2freq = Counter(toy_data.word_sequences_mat[:, -1])
     mean_klds = []
     for num_cats in params.num_cats_list:
         cat2legals = toy_data.num_cats2cat2legals[num_cats]

@@ -7,10 +7,10 @@ class ObjectView(object):
 
 class Params:
     # input data
-    truncate_control = [False]
+    truncate_control = [False, True]
     truncate_num_cats = [32]
-    truncate_list = [[0.5, 0.5], [1.0, 1.0]]
-    num_seqs = [10 * 10 ** 6]
+    truncate_list = [[0.5, 1.0], [1.0, 0.5]]
+    num_seqs = [5 * 10 ** 6]
     max_ngram_size = [1]
     num_descendants = [2]  # 2
     num_levels = [10]  # 12
@@ -19,8 +19,8 @@ class Params:
     num_cats_list = [[32]]
     structure_ngram_size = [1]
     # rnn
-    num_iterations = [200]
-    num_partitions = [1]
+    num_iterations = [5]
+    num_partitions = [8]
     rnn_type = ['srn']
     bptt = max_ngram_size
     mb_size = [64]

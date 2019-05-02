@@ -16,10 +16,10 @@ NUMS_SPLITS = 8
 
 NUM_CATS = 32
 
-DefaultParams.num_seqs = [20 * 10 ** 6]
+DefaultParams.num_seqs = [2 * 10 ** 6]
 DefaultParams.num_cats_list = [[NUM_CATS]]
 DefaultParams.truncate_num_cats = [NUM_CATS]
-DefaultParams.truncate_list = [[1.0, 1.0], [0.5, 0.5]]
+DefaultParams.truncate_list = [[0.5, 1.0], [1.0, 0.5]]
 
 
 def calc_ba_from_sequences_chunk(seqs_chunk, d):
@@ -72,7 +72,7 @@ for param2vals in list_all_param2vals(DefaultParams, update_d={'param_name': 'te
 
     probe2act = {p: np.zeros(toy_data.num_vocab) for p in probes}
     xi = 0
-    for rows in np.vsplit(np.asarray(toy_data.word_sequences), NUMS_SPLITS):
+    for rows in np.vsplit(np.asarray(toy_data.word_sequences_mat), NUMS_SPLITS):
         ba = calc_ba_from_sequences_chunk(rows, probe2act)
         xi += len(rows)
         truncate2bas[truncate].append(ba)

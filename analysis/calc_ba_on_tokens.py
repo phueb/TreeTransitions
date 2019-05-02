@@ -32,7 +32,7 @@ for param2vals in list_all_param2vals(DefaultParams, update_d={'param_name': 'te
         cats = set(probe2cat.values())
         # probe2act
         probe2act = {p: np.zeros(toy_data.num_vocab) for p in probes}
-        for seq in toy_data.word_sequences:
+        for seq in toy_data.word_sequences_mat:
             assert len(seq) == 2
             p, c = seq
             vocab_id = toy_data.word2id[c]
