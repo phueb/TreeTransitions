@@ -13,13 +13,11 @@ from treetransitions.utils import to_corr_mat, calc_ba
 from treetransitions import config
 
 
-def make_sequences_chunk(vocab2, chunk_id, size2word2legals, word2sorted_legals, num_seqs, truncate):
+def make_sequences_chunk(vocab2, chunk_id, word2legals, word2sorted_legals, num_seqs, truncate):
     if chunk_id % config.Eval.num_processes == 0:
         print('\nMaking sequences chunk with truncate={}'.format(truncate))
     #
-    seq_size = len(size2word2legals) + 1
-    assert seq_size == 2  # currently only works for seq_size = 2
-    word2legals = size2word2legals[1]  # currently only works for seq_size = 2
+    seq_size = 2
     res = np.random.choice(vocab2, size=(num_seqs, seq_size))
     pbar = pyprind.ProgBar(num_seqs) if chunk_id % config.Eval.num_processes == 0 else None
     for seq in res:
@@ -51,28 +49,19 @@ class ToyData:
         self.ngram_sizes = range(1, self.params.max_ngram_size + 1)
         self.vocab1 = self.make_vocab(0)
         self.vocab2 = self.make_vocab(VOCAB2_ID)
-
         self.num_vocab1 = len(self.vocab1)
         self.num_vocab2 = len(self.vocab2)
-        # assert self.vocab1 == self.vocab2
-
-        self.num_vocab = self.num_vocab1
-        if VOCAB2_ID:
-            self.num_vocab = self.num_vocab1 + self.num_vocab2  # TODO test
-
         self.word2id1 = {word: n for n, word in enumerate(self.vocab1)}
         self.word2id2 = {word: n for n, word in enumerate(self.vocab2)}
-        # assert self.word2id1 == self.word2id2
-
-        self.word2id = {word: n for n, word in enumerate(self.vocab1)}
-        if VOCAB2_ID:
-            self.word2id = {word: n for n, word in enumerate(self.vocab1 + self.vocab2)}  # TODO test
         #
-        self.size2word2node0 = self.make_size2word2node0()
-        self.size2legals_mat = self.make_size2legals_mat()
-        self.size2word2legals = self.make_size2word2legals()
-        self.legals_mat = self.size2legals_mat[self.params.structure_ngram_size]
-        self.word2legals = self.size2word2legals[self.params.structure_ngram_size]
+        self.vocab = set(self.vocab1 + self.vocab2)
+        self.num_vocab = len(self.vocab)
+        self.word2id = {word: n for n, word in enumerate(self.vocab1)}
+        self.word2id = {word: n for n, word in enumerate(self.vocab)}
+        #
+        self.word2node0 = self.make_word2node0()
+        self.legals_mat = self.make_legals_mat()
+        self.word2legals = self.make_word2legals()
         #
         self.z = self.make_z()
         self.probes = self.make_probes()
@@ -106,44 +95,32 @@ class ToyData:
         print(vocab[:10])
         return vocab
 
-    def make_size2word2node0(self):
-        res = {size: {} for size in self.ngram_sizes}
-        for size in self.ngram_sizes:
-            for row_id, word in enumerate(self.vocab1):
-                node0 = -1 if np.random.binomial(n=1, p=0.5) else 1
-                res[size][word] = node0
+    def make_word2node0(self):
+        res = {}
+        for row_id, word in enumerate(self.vocab1):
+            node0 = -1 if np.random.binomial(n=1, p=0.5) else 1
+            res[word] = node0
         return res
 
-    def make_size2legals_mat(self):
-        # each row specifies legal next words (col_words)
-
-        # res = {ngram: np.zeros((self.num_vocab, self.num_vocab), dtype=np.int) for ngram in self.ngram_sizes}
-        res = {ngram: np.zeros((self.num_vocab1, self.num_vocab2), dtype=np.int) for ngram in self.ngram_sizes}  # TODO test
-
-        print('Making hierarchical dependency structure...')
-        # a column defines words that are predicted by the col word - but careful with node0
-        for size in self.ngram_sizes:
-            for row_id, word in enumerate(self.vocab1):
-                res[size][row_id, :] = self.sample_from_hierarchical_diffusion(self.size2word2node0[size][word])
+    def make_legals_mat(self):
+        res = np.zeros((self.num_vocab1, self.num_vocab2), dtype=np.int)
+        for n, word in enumerate(self.vocab1):
+            res[n, :] = self.sample_from_hierarchical_diffusion(self.word2node0[word])
         print('Done')
         return res
 
-    def make_size2word2legals(self):
+    def make_word2legals(self):
         # collect legal next words for each word at each distance - do this once to speed calculation of tokens
         # whether -1 or 1 determines legality depends on node0 - otherwise half of words are never legal.
         # col contains information about which row_words come next
         res = {}
-        for size in self.ngram_sizes:
-            legals_mat = self.size2legals_mat[size]
-            word2legals = {}
-            for col_word, vals in zip(self.vocab2, legals_mat.T):
-            # for col_word, vals in zip(self.vocab, legals_mat):  # TODO test
+        for col_word, vals in zip(self.vocab2, self.legals_mat.T):
+        # for col_word, vals in zip(self.vocab, legals_mat):  # TODO test
 
-                legals = [w for w, val in zip(self.vocab1, vals) if val == self.size2word2node0[size][w]]  # required
-                # legals = [w for w, val in zip(self.vocab, vals) if val == self.size2word2node0[size][w]]  # required  # TODO test
+            legals = [w for w, val in zip(self.vocab1, vals) if val == self.word2node0[w]]  # required
+            # legals = [w for w, val in zip(self.vocab, vals) if val == self.size2word2node0[size][w]]  # required  # TODO test
 
-                word2legals[col_word] = legals
-            res[size] = word2legals
+            res[col_word] = legals
         return res
 
     # ///////////////////////////////////////////////////////////////////////// probes
@@ -278,7 +255,7 @@ class ToyData:
         word2sorted_legals = self.num_cats2word2sorted_legals[self.params.truncate_num_cats]
         results = [pool.apply_async(
             make_sequences_chunk,
-            args=(self.vocab2, chunk_id, self.size2word2legals, word2sorted_legals,
+            args=(self.vocab2, chunk_id, self.word2legals, word2sorted_legals,
                   num_seqs_in_chunk, truncate_steps[chunk_id]))
             for chunk_id in range(num_chunks)]
         chunks = []
