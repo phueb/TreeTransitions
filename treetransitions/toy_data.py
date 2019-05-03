@@ -70,6 +70,7 @@ class ToyData:
         #
         self.word_sequences_mat = self.make_sequences_mat()
         self.num_seqs = len(self.word_sequences_mat)  # divisible by mb_size and num_partitions
+        print('shape of word_sequences_mat={}'.format(self.word_sequences_mat.shape))
         self.id_sequences_mat = np.asarray([[self.word2id[w] for w in seq]
                                             for seq in self.word_sequences_mat]).reshape((self.num_seqs, -1))
 
@@ -88,7 +89,6 @@ class ToyData:
 
     def make_size2legals_mat(self):
         # each row specifies legal next words (col_words)
-
         res = {ngram: np.zeros((self.num_vocab, self.num_vocab), dtype=np.int) for ngram in self.ngram_sizes}
         print('Making hierarchical dependency structure...')
         # a column defines words that are predicted by the col word - but careful with node0
@@ -200,9 +200,6 @@ class ToyData:
                 cat = probe2cat[word]
                 cat_legals = cat2legals[cat]
                 cat_legals2freq = Counter(cat_legals)
-                #
-                # for k, v in sorted(cat_legals2freq.items(), key=lambda i: cat_legals2freq[i[0]]):
-                #     print(k, v)
                 #
                 sorted_legals = sorted(set(cat_legals), key=cat_legals2freq.get)  # sorts in ascending order
                 if self.params.truncate_control:

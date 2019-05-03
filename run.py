@@ -32,7 +32,7 @@ def run_on_host():
     #
     for param2val in list_all_param2vals(Params, update_d={'param_name': 'test', 'job_name': 'test'}):
         if config.Eval.debug:
-            param2val['num_seqs'] = 1 * 10 ** 4
+            param2val['num_seqs'] = 1 * 10 ** 6
             print('Debugging - num_seqs={}'.format(param2val['num_seqs']))
         main_job(param2val)
 
