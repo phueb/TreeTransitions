@@ -9,7 +9,7 @@ class Params:
     # input data
     truncate_control = [False, True]
     truncate_num_cats = [32]
-    truncate_list = [[0.5, 1.0], [1.0, 0.5]]
+    truncate_list = [[0.5, 0.5], [1.0, 1.0]]
     num_seqs = [5 * 10 ** 6]
     max_ngram_size = [1]
     num_descendants = [2]  # 2
@@ -20,7 +20,7 @@ class Params:
     structure_ngram_size = [1]
     # rnn
     num_iterations = [5]
-    num_partitions = [8]
+    num_partitions = [1]
     rnn_type = ['srn']
     bptt = max_ngram_size
     mb_size = [64]

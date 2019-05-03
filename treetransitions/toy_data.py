@@ -13,25 +13,31 @@ from treetransitions.utils import to_corr_mat, calc_ba
 from treetransitions import config
 
 
-def make_sequences_chunk(vocab, chunk_id, size2word2legals, word2sorted_legals, num_seqs, truncate):
+def make_sequences_chunk(vocab2, chunk_id, size2word2legals, word2sorted_legals, num_seqs, truncate):
     if chunk_id % config.Eval.num_processes == 0:
         print('\nMaking sequences chunk with truncate={}'.format(truncate))
     #
     seq_size = len(size2word2legals) + 1
     assert seq_size == 2  # currently only works for seq_size = 2
     word2legals = size2word2legals[1]  # currently only works for seq_size = 2
-    res = np.random.choice(vocab, size=(num_seqs, seq_size))
+    res = np.random.choice(vocab2, size=(num_seqs, seq_size))
     pbar = pyprind.ProgBar(num_seqs) if chunk_id % config.Eval.num_processes == 0 else None
     for seq in res:
         # get words which are legal to come next
+
         context_word = seq[0]
+        # context_word = seq[-1]  # TODO test
+
         sorted_legals = word2sorted_legals[context_word]
         num_truncated = int(len(sorted_legals) * truncate)
         legals_set = set(sorted_legals[:num_truncated])
         legals_set.intersection_update(word2legals[context_word])
         # sample from legals
         new_token = np.random.choice(list(legals_set), size=1, p=None).item()
+
         seq[-1] = new_token
+        # seq[0] = new_token # TODO test
+
         pbar.update() if chunk_id % config.Eval.num_processes == 0 else None
     return res
 
@@ -40,9 +46,15 @@ class ToyData:
     def __init__(self, params, max_ba=True):
         self.params = params
         self.ngram_sizes = range(1, self.params.max_ngram_size + 1)
-        self.vocab = self.make_vocab()
-        self.num_vocab = len(self.vocab)
-        self.word2id = {word: n for n, word in enumerate(self.vocab)}
+        self.vocab1 = self.make_vocab(0)
+        self.vocab2 = self.make_vocab(0)  # TODO use 1 instead of zero to switch to new behavior
+        self.num_vocab1 = len(self.vocab1)
+        self.num_vocab2 = len(self.vocab2)
+        self.num_vocab = self.num_vocab1 + self.num_vocab2
+        self.word2id1 = {word: n for n, word in enumerate(self.vocab1)}
+        self.word2id2 = {word: n for n, word in enumerate(self.vocab2)}
+        self.word2id = {word: n for n, word in enumerate(self.vocab1)}
+        # self.word2id = {word: n for n, word in enumerate(self.vocab1 + self.vocab2)}  # TODO test
         #
         self.size2word2node0 = self.make_size2word2node0()
         self.size2legals_mat = self.make_size2legals_mat()
@@ -74,26 +86,32 @@ class ToyData:
         self.id_sequences_mat = np.asarray([[self.word2id[w] for w in seq]
                                             for seq in self.word_sequences_mat]).reshape((self.num_seqs, -1))
 
-    def make_vocab(self):
+    def make_vocab(self, vocab_id):
         num_vocab = self.params.num_descendants ** self.params.num_levels
-        vocab = ['w{}'.format(i) for i in np.arange(num_vocab)]
+
+        # vocab = ['w{}'.format(i) for i in np.arange(num_vocab)]
+        vocab = ['w{}'.format(i) for i in np.arange(num_vocab * vocab_id, num_vocab * (vocab_id + 1))]  # TODO test
+        print(vocab[:10])
         return vocab
 
     def make_size2word2node0(self):
         res = {size: {} for size in self.ngram_sizes}
         for size in self.ngram_sizes:
-            for row_id, word in enumerate(self.vocab):
+            for row_id, word in enumerate(self.vocab1):
                 node0 = -1 if np.random.binomial(n=1, p=0.5) else 1
                 res[size][word] = node0
         return res
 
     def make_size2legals_mat(self):
         # each row specifies legal next words (col_words)
-        res = {ngram: np.zeros((self.num_vocab, self.num_vocab), dtype=np.int) for ngram in self.ngram_sizes}
+
+        # res = {ngram: np.zeros((self.num_vocab, self.num_vocab), dtype=np.int) for ngram in self.ngram_sizes}
+        res = {ngram: np.zeros((self.num_vocab1, self.num_vocab2), dtype=np.int) for ngram in self.ngram_sizes}  # TODO test
+
         print('Making hierarchical dependency structure...')
         # a column defines words that are predicted by the col word - but careful with node0
         for size in self.ngram_sizes:
-            for row_id, word in enumerate(self.vocab):
+            for row_id, word in enumerate(self.vocab1):
                 res[size][row_id, :] = self.sample_from_hierarchical_diffusion(self.size2word2node0[size][word])
         print('Done')
         return res
@@ -106,8 +124,12 @@ class ToyData:
         for size in self.ngram_sizes:
             legals_mat = self.size2legals_mat[size]
             word2legals = {}
-            for col_word, col in zip(self.vocab, legals_mat.T):
-                legals = [w for w, val in zip(self.vocab, col) if val == self.size2word2node0[size][w]]  # required
+            for col_word, vals in zip(self.vocab2, legals_mat.T):
+            # for col_word, vals in zip(self.vocab, legals_mat):  # TODO test
+
+                legals = [w for w, val in zip(self.vocab1, vals) if val == self.size2word2node0[size][w]]  # required
+                # legals = [w for w, val in zip(self.vocab, vals) if val == self.size2word2node0[size][w]]  # required  # TODO test
+
                 word2legals[col_word] = legals
             res[size] = word2legals
         return res
@@ -115,9 +137,12 @@ class ToyData:
     # ///////////////////////////////////////////////////////////////////////// probes
 
     def make_z(self, method='single', metric='euclidean'):
-        assert self.legals_mat.shape == (self.num_vocab, self.num_vocab)
+        assert self.legals_mat.shape == (self.num_vocab1, self.num_vocab2)
         # careful: idx1 and idx2 in res are not integers (they are floats)
+
         corr_mat = to_corr_mat(self.legals_mat)
+        # corr_mat = to_corr_mat(self.legals_mat.T)  # TODO test
+
         res = linkage(corr_mat, metric=metric, method=method)  # need to cluster correlation matrix otherwise messy
         return res
 
@@ -130,10 +155,10 @@ class ToyData:
         # all idx >= len(X) actually refer to the cluster formed in Z[idx - len(X)]
         """
         try:
-            p = self.vocab[node_id.astype(int)]
+            p = self.vocab2[node_id.astype(int)]
         except IndexError:  # in case idx does not refer to leaf node (then it refers to cluster)
-            new_node_id1 = z[node_id.astype(int) - self.num_vocab][0]
-            new_node_id2 = z[node_id.astype(int) - self.num_vocab][1]
+            new_node_id1 = z[node_id.astype(int) - self.num_vocab2][0]
+            new_node_id2 = z[node_id.astype(int) - self.num_vocab2][1]
             self.get_all_probes_in_tree(res1, z, new_node_id1)
             self.get_all_probes_in_tree(res1, z, new_node_id2)
         else:
@@ -191,11 +216,11 @@ class ToyData:
         print('truncate_control={}'.format(self.params.truncate_control))
         #
         non_cat_sorted_legal_ids = np.argsort(self.legals_mat.sum(axis=1))
-        non_cat_sorted_legals = [self.vocab[i] for i in non_cat_sorted_legal_ids]
+        non_cat_sorted_legals = [self.vocab1[i] for i in non_cat_sorted_legal_ids]
         res = {}
         probe2cat = self.num_cats2probe2cat[self.params.truncate_num_cats]
         cat2legals = self.num_cats2cat2legals[self.params.truncate_num_cats]
-        for word in self.vocab:
+        for word in self.vocab2:
             if word in self.probes:
                 cat = probe2cat[word]
                 cat_legals = cat2legals[cat]
@@ -241,7 +266,7 @@ class ToyData:
         word2sorted_legals = self.num_cats2word2sorted_legals[self.params.truncate_num_cats]
         results = [pool.apply_async(
             make_sequences_chunk,
-            args=(self.vocab, chunk_id, self.size2word2legals, word2sorted_legals,
+            args=(self.vocab2, chunk_id, self.size2word2legals, word2sorted_legals,
                   num_seqs_in_chunk, truncate_steps[chunk_id]))
             for chunk_id in range(num_chunks)]
         chunks = []
@@ -278,11 +303,11 @@ class ToyData:
         for num_cats in self.params.num_cats_list:
             probes = self.probes
             probe2cat = self.num_cats2probe2cat[num_cats]
-            probe_acts1 = self.legals_mat[[self.word2id[p] for p in probes], :]
-            ba1 = calc_ba(cosine_similarity(probe_acts1), probes, probe2cat)
-            probe_acts2 = self.legals_mat[:, [self.word2id[p] for p in probes]].T
+            # probe_acts1 = self.legals_mat[[self.word2id1[p] for p in probes], :]
+            # ba1 = calc_ba(cosine_similarity(probe_acts1), probes, probe2cat)
+            probe_acts2 = self.legals_mat[:, [self.word2id2[p] for p in probes]].T
             ba2 = calc_ba(cosine_similarity(probe_acts2), probes, probe2cat)
-            print('input-data row-wise ba={:.3f}'.format(ba1))
+            # print('input-data row-wise ba={:.3f}'.format(ba1))
             print('input-data col-wise ba={:.3f}'.format(ba2))
             print()
             res[num_cats] = ba2
