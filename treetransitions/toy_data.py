@@ -42,19 +42,31 @@ def make_sequences_chunk(vocab2, chunk_id, size2word2legals, word2sorted_legals,
     return res
 
 
+VOCAB2_ID = 0  # TODO use 1 instead of zero to switch to new behavior
+
+
 class ToyData:
     def __init__(self, params, max_ba=True):
         self.params = params
         self.ngram_sizes = range(1, self.params.max_ngram_size + 1)
         self.vocab1 = self.make_vocab(0)
-        self.vocab2 = self.make_vocab(0)  # TODO use 1 instead of zero to switch to new behavior
+        self.vocab2 = self.make_vocab(VOCAB2_ID)
+
         self.num_vocab1 = len(self.vocab1)
         self.num_vocab2 = len(self.vocab2)
-        self.num_vocab = self.num_vocab1 + self.num_vocab2
+        # assert self.vocab1 == self.vocab2
+
+        self.num_vocab = self.num_vocab1
+        if VOCAB2_ID:
+            self.num_vocab = self.num_vocab1 + self.num_vocab2  # TODO test
+
         self.word2id1 = {word: n for n, word in enumerate(self.vocab1)}
         self.word2id2 = {word: n for n, word in enumerate(self.vocab2)}
+        # assert self.word2id1 == self.word2id2
+
         self.word2id = {word: n for n, word in enumerate(self.vocab1)}
-        # self.word2id = {word: n for n, word in enumerate(self.vocab1 + self.vocab2)}  # TODO test
+        if VOCAB2_ID:
+            self.word2id = {word: n for n, word in enumerate(self.vocab1 + self.vocab2)}  # TODO test
         #
         self.size2word2node0 = self.make_size2word2node0()
         self.size2legals_mat = self.make_size2legals_mat()
