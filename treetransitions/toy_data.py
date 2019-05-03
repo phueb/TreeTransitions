@@ -13,7 +13,7 @@ from treetransitions.utils import to_corr_mat, calc_ba
 from treetransitions import config
 
 
-def make_sequences_chunk(x_words, chunk_id, word2legals, word2sorted_legals, num_seqs, truncate):
+def make_sequences_chunk(x_words, chunk_id, xw_2yws, xw2sorted_yws, num_seqs, truncate):
     if chunk_id % config.Eval.num_processes == 0:
         print('\nMaking sequences chunk with truncate={}'.format(truncate))
     #
@@ -21,13 +21,13 @@ def make_sequences_chunk(x_words, chunk_id, word2legals, word2sorted_legals, num
     res = np.random.choice(x_words, size=(num_seqs, seq_size))
     pbar = pyprind.ProgBar(num_seqs) if chunk_id % config.Eval.num_processes == 0 else None
     for seq in res:
-        # get words which are legal to come next
+        # get words which are legal to come next - y_words
         xw = seq[0]
-        sorted_yws = word2sorted_legals[xw]
+        sorted_yws = xw2sorted_yws[xw]
         num_truncated = int(len(sorted_yws) * truncate)
         yws_set = set(sorted_yws[:num_truncated])
-        yws_set.intersection_update(word2legals[xw])
-        # sample from legals
+        yws_set.intersection_update(xw_2yws[xw])
+        # sample from y_words
         yw = np.random.choice(list(yws_set), size=1, p=None).item()
         seq[-1] = yw
         pbar.update() if chunk_id % config.Eval.num_processes == 0 else None
@@ -43,25 +43,25 @@ class ToyData:
         self.x_words = self.make_vocab(VOCAB2_ID)
         self.y_words = self.make_vocab(0)
         self.num_yws = len(self.y_words)
-        self.num_vocab2 = len(self.x_words)
+        self.num_xws = len(self.x_words)
         #
         self.vocab = set(self.y_words + self.x_words)
         self.num_vocab = len(self.vocab)
         self.word2id = {word: n for n, word in enumerate(self.vocab)}
         #
-        self.word2node0 = self.make_word2node0()
+        self.yw2node0 = self.make_yw2node0()
         self.legals_mat = self.make_legals_mat()
-        self.word2legals = self.make_word2legals()
+        self.xw2yws = self.make_xw2yws()
         #
         self.z = self.make_z()
         self.probes = self.make_probes()
         self.num_cats2probe2cat = {num_cats: self.make_probe2cat(num_cats)
                                    for num_cats in params.num_cats_list}
         #
-        self.num_cats2cat2legals = {num_cats: self.make_cat2legals(num_cats)
-                                    for num_cats in params.num_cats_list}
-        self.num_cats2word2sorted_legals = {num_cats: self.make_word2sorted_legals()
-                                            for num_cats in params.num_cats_list}
+        self.num_cats2cat2yws = {num_cats: self.make_cat2yws(num_cats)
+                                 for num_cats in params.num_cats_list}
+        self.num_cats2xw2_sorted_yws = {num_cats: self.make_xw2_sorted_yws()
+                                        for num_cats in params.num_cats_list}
         self.num_cats2max_ba = self.make_num_cats2max_ba() if max_ba else None
         #
         self.num_cats2cmap = {num_cats: plt.cm.get_cmap('hsv', num_cats + 1)
@@ -85,32 +85,29 @@ class ToyData:
         print(vocab[:10])
         return vocab
 
-    def make_word2node0(self):
+    def make_yw2node0(self):
         res = {}
-        for row_id, word in enumerate(self.y_words):
+        for yw in self.y_words:
             node0 = -1 if np.random.binomial(n=1, p=0.5) else 1
-            res[word] = node0
+            res[yw] = node0
         return res
 
     def make_legals_mat(self):
-        res = np.zeros((self.num_yws, self.num_vocab2), dtype=np.int)
-        for n, word in enumerate(self.y_words):
-            res[n, :] = self.sample_from_hierarchical_diffusion(self.word2node0[word])
+        """
+        each row contains a vector sampled from hierarchical process.
+        each column represents which y_words are allowed to follow an x_word (word associated with column)
+        """
+        res = np.zeros((self.num_yws, self.num_xws), dtype=np.int)
+        for n, yw in enumerate(self.y_words):
+            res[n, :] = self.sample_from_hierarchical_diffusion(self.yw2node0[yw])
         print('Done')
         return res
 
-    def make_word2legals(self):
-        # collect legal next words for each word at each distance - do this once to speed calculation of tokens
-        # whether -1 or 1 determines legality depends on node0 - otherwise half of words are never legal.
-        # col contains information about which row_words come next
+    def make_xw2yws(self):
         res = {}
-        for col_word, vals in zip(self.x_words, self.legals_mat.T):
-        # for col_word, vals in zip(self.vocab, legals_mat):  # TODO test
-
-            legals = [w for w, val in zip(self.y_words, vals) if val == self.word2node0[w]]  # required
-            # legals = [w for w, val in zip(self.vocab, vals) if val == self.size2word2node0[size][w]]  # required  # TODO test
-
-            res[col_word] = legals
+        for xw, vals in zip(self.x_words, self.legals_mat.T):
+            yws = [yw for yw, val in zip(self.y_words, vals) if val == self.yw2node0[yw]]  # node0 is required
+            res[xw] = yws
         return res
 
     # ///////////////////////////////////////////////////////////////////////// probes
@@ -118,8 +115,6 @@ class ToyData:
     def make_z(self, method='single', metric='euclidean'):
         # careful: idx1 and idx2 in res are not integers (they are floats)
         corr_mat = to_corr_mat(self.legals_mat)
-        # corr_mat = to_corr_mat(self.legals_mat.T)  # TODO test
-
         res = linkage(corr_mat, metric=metric, method=method)  # need to cluster correlation matrix otherwise messy
         return res
 
@@ -134,8 +129,8 @@ class ToyData:
         try:
             p = self.x_words[node_id.astype(int)]
         except IndexError:  # in case idx does not refer to leaf node (then it refers to cluster)
-            new_node_id1 = z[node_id.astype(int) - self.num_vocab2][0]
-            new_node_id2 = z[node_id.astype(int) - self.num_vocab2][1]
+            new_node_id1 = z[node_id.astype(int) - self.num_xws][0]
+            new_node_id2 = z[node_id.astype(int) - self.num_xws][1]
             self.get_all_probes_in_tree(res1, z, new_node_id1)
             self.get_all_probes_in_tree(res1, z, new_node_id2)
         else:
@@ -154,6 +149,7 @@ class ToyData:
         for idx in [idx1, idx2]:
             self.get_all_probes_in_tree(res, self.z, idx)
         print('Collected {} probes'.format(len(res)))
+        assert set(self.x_words) == set(res)
         return res
 
     def make_probe2cat(self, num_cats):
@@ -178,37 +174,32 @@ class ToyData:
             res[p] = to_hex(cmap(cat))
         return res
 
-    def make_cat2legals(self, num_cats):
+    def make_cat2yws(self, num_cats):
         res = {cat: [] for cat in range(num_cats)}
         probe2cat = self.num_cats2probe2cat[num_cats]
         for p, cat in probe2cat.items():
-            legals = self.word2legals[p]
-            res[cat] += legals
+            yws = self.xw2yws[p]
+            res[cat] += yws
         return res
 
     # /////////////////////////////////////////////////////////////// sequences
 
-    def make_word2sorted_legals(self):
+    def make_xw2_sorted_yws(self):
         assert isinstance(self.params.truncate_control, bool)  # if [False], it would incorrectly evaluate to True
         print('truncate_control={}'.format(self.params.truncate_control))
         #
-        non_cat_sorted_legal_ids = np.argsort(self.legals_mat.sum(axis=1))
-        non_cat_sorted_legals = [self.y_words[i] for i in non_cat_sorted_legal_ids]
         res = {}
         probe2cat = self.num_cats2probe2cat[self.params.truncate_num_cats]
-        cat2legals = self.num_cats2cat2legals[self.params.truncate_num_cats]
-        for word in self.x_words:
-            if word in self.probes:
-                cat = probe2cat[word]
-                cat_legals = cat2legals[cat]
-                cat_legals2freq = Counter(cat_legals)
-                #
-                sorted_legals = sorted(set(cat_legals), key=cat_legals2freq.get)  # sorts in ascending order
-                if self.params.truncate_control:
-                    random.shuffle(sorted_legals)
-                res[word] = sorted_legals
-            else:
-                res[word] = non_cat_sorted_legals
+        cat2yws = self.num_cats2cat2yws[self.params.truncate_num_cats]
+        for xw in self.x_words:
+            cat = probe2cat[xw]
+            cat_yws = cat2yws[cat]
+            cat_yws2freq = Counter(cat_yws)
+            #
+            sorted_yws = sorted(set(cat_yws), key=cat_yws2freq.get)  # sorts in ascending order
+            if self.params.truncate_control:
+                random.shuffle(sorted_yws)
+            res[xw] = sorted_yws
         return res
 
     def sample_from_hierarchical_diffusion(self, node0):
@@ -240,10 +231,10 @@ class ToyData:
         min_truncate, max_truncate = self.params.truncate_list
         truncate_steps = np.linspace(min_truncate, max_truncate, num_chunks + 2)[1:-1]
         num_seqs_in_chunk = self.params.num_seqs // num_chunks
-        word2sorted_legals = self.num_cats2word2sorted_legals[self.params.truncate_num_cats]
+        xw2sorted_yws = self.num_cats2xw2_sorted_yws[self.params.truncate_num_cats]
         results = [pool.apply_async(
             make_sequences_chunk,
-            args=(self.x_words, chunk_id, self.word2legals, word2sorted_legals,
+            args=(self.x_words, chunk_id, self.xw2yws, xw2sorted_yws,
                   num_seqs_in_chunk, truncate_steps[chunk_id]))
             for chunk_id in range(num_chunks)]
         chunks = []

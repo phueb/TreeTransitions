@@ -54,7 +54,7 @@ for param2vals in list_all_param2vals(DefaultParams, update_d={'param_name': 'te
     w2freq = Counter(toy_data.word_sequences_mat[:, -1])
     mean_klds = []
     for num_cats in params.num_cats_list:
-        cat2legals = toy_data.num_cats2cat2legals[num_cats]
+        cat2legals = toy_data.num_cats2cat2yws[num_cats]
         cat_klds = []
         for cat, legals in cat2legals.items():
             c = Counter(legals)

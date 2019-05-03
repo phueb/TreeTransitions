@@ -25,12 +25,12 @@ for param2vals in list_all_param2vals(DefaultParams, update_d={'param_name': 'te
     # toy data
     toy_data = ToyData(params)
     probe2cat = toy_data.num_cats2probe2cat[NUM_CATS]
-    cat2legals = toy_data.num_cats2cat2legals[NUM_CATS]
+    cat2legals = toy_data.num_cats2cat2yws[NUM_CATS]
     cats = np.arange(NUM_CATS)
 
     all_legals = []
     for w in toy_data.vocab:
-        all_legals.extend(toy_data.word2legals[w])
+        all_legals.extend(toy_data.xw2yws[w])
     print(len(all_legals))
     legal2freq = Counter(all_legals)
     print(np.mean([f for w, f in legal2freq.items()]))
