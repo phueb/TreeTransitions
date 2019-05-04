@@ -17,31 +17,33 @@ def make_sequences_chunk(x_words, y_words, chunk_id, xw_2yws, xw2sorted_yws, num
     if chunk_id % config.Eval.num_processes == 0:
         print('\nMaking sequences chunk with truncate={} and truncate_type={}'.format(truncate, truncate_type))
     #
-    if truncate_type == 'legals':
-        truncate_probes_probs = iter([0] * num_seqs)
-    elif truncate_type == 'probes':
-        truncate_probes_probs = iter(np.random.binomial(n=1, p=1 - truncate, size=num_seqs))
-    else:
-        raise AttributeError('Invalid arg to "truncate_type".')
-    #
+    assert truncate_type in ['legals', 'probes']
     seq_size = 2
     res = np.random.choice(x_words, size=(num_seqs, seq_size))
     pbar = pyprind.ProgBar(num_seqs) if chunk_id % config.Eval.num_processes == 0 else None
     num_y_word_insertions = 0
     for seq in res:
-        if next(truncate_probes_probs):
-            seq[0] = np.random.choice(y_words, size=1).item()
-            num_y_word_insertions += 1
-        else:
+        if truncate_type == 'probes':
+            if np.random.binomial(n=1, p=1 - truncate, size=1).item():
+                seq[:] = np.random.choice(y_words, size=2)
+                num_y_word_insertions += 1
+                continue
+            else:
+                xw = seq[0]
+                yw = np.random.choice(xw_2yws[xw], size=1, p=None).item()
+                seq[-1] = yw
+        elif truncate_type == 'legals':
             # get words which are legal to come next - y_words
             xw = seq[0]
             sorted_yws = xw2sorted_yws[xw]
             num_truncated = int(len(sorted_yws) * truncate)
-            yws_set = set(sorted_yws[:num_truncated])
-            yws_set.intersection_update(xw_2yws[xw])
-            # sample from y_words
-            yw = np.random.choice(list(yws_set), size=1, p=None).item()
+            legal_yws = set(sorted_yws[:num_truncated])
+            legal_yws.intersection_update(xw_2yws[xw])
+            # sample from legal y_words
+            yw = np.random.choice(list(legal_yws), size=1, p=None).item()
             seq[-1] = yw
+        else:
+            raise AttributeError('Invalid arg to "truncate_type".')
         pbar.update() if chunk_id % config.Eval.num_processes == 0 else None
     if chunk_id % config.Eval.num_processes == 0:
         print('num_seqs={} num_y_word_insertions={} prob={}'.format(
@@ -238,7 +240,8 @@ class ToyData:
         # make sequences - in parallel
         pool = mp.Pool(processes=num_processes)
         min_truncate, max_truncate = self.params.truncate_list
-        truncate_steps = np.linspace(min_truncate, max_truncate, num_chunks + 2)[1:-1]
+        # truncate_steps = np.linspace(min_truncate, max_truncate, num_chunks + 2)[1:-1]
+        truncate_steps = np.linspace(min_truncate, max_truncate, num_chunks)
         num_seqs_in_chunk = self.params.num_seqs // num_chunks
         xw2sorted_yws = self.num_cats2xw2_sorted_yws[self.params.truncate_num_cats]
         results = [pool.apply_async(

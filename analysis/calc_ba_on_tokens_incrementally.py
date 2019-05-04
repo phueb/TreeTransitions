@@ -12,14 +12,16 @@ from ludwigcluster.utils import list_all_param2vals
 FIGSIZE = (10, 5)
 TITLE_FONTSIZE = 10
 
-NUMS_SPLITS = 8
+NUMS_SPLITS = 4
 
 NUM_CATS = 32
+TRUNCATE_TYPE = 'probes'
 
-DefaultParams.num_seqs = [2 * 10 ** 6]
+DefaultParams.num_seqs = [1 * 10 ** 6]
 DefaultParams.num_cats_list = [[NUM_CATS]]
 DefaultParams.truncate_num_cats = [NUM_CATS]
-DefaultParams.truncate_list = [[0.5, 1.0], [1.0, 0.5]]
+DefaultParams.truncate_list = [[0.5, 0.5], [1.0, 1.0]]
+DefaultParams.truncate_type = [TRUNCATE_TYPE]
 
 
 def calc_ba_from_sequences_chunk(seqs_chunk, d):
@@ -27,7 +29,10 @@ def calc_ba_from_sequences_chunk(seqs_chunk, d):
         assert len(seq) == 2
         p, c = seq
         vocab_id = toy_data.word2id[c]
-        d[p][vocab_id] += 1
+        try:
+            d[p][vocab_id] += 1
+        except KeyError:  # probe word was replaced by y_word (due to truncate_type='probes')
+            continue
     # ba
     p_acts = [d[p] for p in probes]
     ba = calc_ba(cosine_similarity(p_acts), probes, probe2cat)
@@ -84,4 +89,5 @@ for param2vals in list_all_param2vals(DefaultParams, update_d={'param_name': 'te
 # plot
 plot_ba_trajs(truncate2bas, truncate2num_windows,
               title='Does ba rise faster when truncate=0.5?\n'
-                    'model=bag-of-words')
+                    'model=bag-of-words\n'
+                    'truncate_type={}'.format(TRUNCATE_TYPE))
