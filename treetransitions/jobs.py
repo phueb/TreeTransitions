@@ -22,7 +22,7 @@ def main_job(param2val, min_probe_freq=10):
         print('{}={}'.format(k, v))
     print()
 
-    toy_data = ToyData(params)
+    toy_data = ToyData(params, max_ba=False if config.Eval.debug else True)
 
     # train loop
     srn = RNN(toy_data.num_vocab, params)

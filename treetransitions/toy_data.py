@@ -13,39 +13,51 @@ from treetransitions.utils import to_corr_mat, calc_ba
 from treetransitions import config
 
 
-def make_sequences_chunk(x_words, chunk_id, xw_2yws, xw2sorted_yws, num_seqs, truncate):
+def make_sequences_chunk(x_words, y_words, chunk_id, xw_2yws, xw2sorted_yws, num_seqs, truncate, truncate_type):
     if chunk_id % config.Eval.num_processes == 0:
-        print('\nMaking sequences chunk with truncate={}'.format(truncate))
+        print('\nMaking sequences chunk with truncate={} and truncate_type={}'.format(truncate, truncate_type))
+    #
+    if truncate_type == 'legals':
+        truncate_probes_probs = iter([0] * num_seqs)
+    elif truncate_type == 'probes':
+        truncate_probes_probs = iter(np.random.binomial(n=1, p=1 - truncate, size=num_seqs))
+    else:
+        raise AttributeError('Invalid arg to "truncate_type".')
     #
     seq_size = 2
     res = np.random.choice(x_words, size=(num_seqs, seq_size))
     pbar = pyprind.ProgBar(num_seqs) if chunk_id % config.Eval.num_processes == 0 else None
+    num_y_word_insertions = 0
     for seq in res:
-        # get words which are legal to come next - y_words
-        xw = seq[0]
-        sorted_yws = xw2sorted_yws[xw]
-        num_truncated = int(len(sorted_yws) * truncate)
-        yws_set = set(sorted_yws[:num_truncated])
-        yws_set.intersection_update(xw_2yws[xw])
-        # sample from y_words
-        yw = np.random.choice(list(yws_set), size=1, p=None).item()
-        seq[-1] = yw
+        if next(truncate_probes_probs):
+            seq[0] = np.random.choice(y_words, size=1).item()
+            num_y_word_insertions += 1
+        else:
+            # get words which are legal to come next - y_words
+            xw = seq[0]
+            sorted_yws = xw2sorted_yws[xw]
+            num_truncated = int(len(sorted_yws) * truncate)
+            yws_set = set(sorted_yws[:num_truncated])
+            yws_set.intersection_update(xw_2yws[xw])
+            # sample from y_words
+            yw = np.random.choice(list(yws_set), size=1, p=None).item()
+            seq[-1] = yw
         pbar.update() if chunk_id % config.Eval.num_processes == 0 else None
+    if chunk_id % config.Eval.num_processes == 0:
+        print('num_seqs={} num_y_word_insertions={} prob={}'.format(
+            num_seqs, num_y_word_insertions, num_y_word_insertions / num_seqs))
     return res
-
-
-VOCAB2_ID = 1  # TODO use 1 instead of zero to switch to new behavior
 
 
 class ToyData:
     def __init__(self, params, max_ba=True):
         self.params = params
-        self.x_words = self.make_vocab(VOCAB2_ID)
-        self.y_words = self.make_vocab(0)
+        self.x_words = self.make_vocab(1)  # probes
+        self.y_words = self.make_vocab(0)  # non-probes (or context words)
         self.num_yws = len(self.y_words)
         self.num_xws = len(self.x_words)
         #
-        self.vocab = set(self.y_words + self.x_words)
+        self.vocab = list(set(self.y_words + self.x_words))
         self.num_vocab = len(self.vocab)
         self.word2id = {word: n for n, word in enumerate(self.vocab)}
         #
@@ -79,10 +91,7 @@ class ToyData:
 
     def make_vocab(self, vocab_id):
         num_vocab = self.params.num_descendants ** self.params.num_levels
-
-        # vocab = ['w{}'.format(i) for i in np.arange(num_vocab)]
-        vocab = ['w{}'.format(i) for i in np.arange(num_vocab * vocab_id, num_vocab * (vocab_id + 1))]  # TODO test
-        print(vocab[:10])
+        vocab = ['w{}'.format(i) for i in np.arange(num_vocab * vocab_id, num_vocab * (vocab_id + 1))]
         return vocab
 
     def make_yw2node0(self):
@@ -234,8 +243,8 @@ class ToyData:
         xw2sorted_yws = self.num_cats2xw2_sorted_yws[self.params.truncate_num_cats]
         results = [pool.apply_async(
             make_sequences_chunk,
-            args=(self.x_words, chunk_id, self.xw2yws, xw2sorted_yws,
-                  num_seqs_in_chunk, truncate_steps[chunk_id]))
+            args=(self.x_words, self.y_words, chunk_id, self.xw2yws, xw2sorted_yws,
+                  num_seqs_in_chunk, truncate_steps[chunk_id], self.params.truncate_type))
             for chunk_id in range(num_chunks)]
         chunks = []
         print('Creating sequences...')
