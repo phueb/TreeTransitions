@@ -101,23 +101,24 @@ class RNN:
         res = np.exp(loss_sum / num_batches)
         return res
 
-    def calc_logits(self, seqs):
+    def calc_logits(self, x):
         self.model.eval()  # protects from dropout
-        self.model.batch_size = len(seqs)
-
-        # prepare inputs
-        x = seqs[:, :-1]
-        inputs = torch.LongTensor(x.T)  # requires [num_steps, mb_size]
-
-        # forward pass
+        self.model.batch_size = len(x)
+        #
+        inputs = torch.cuda.LongTensor(x.T)  # requires [num_steps, mb_size]
         hidden = self.model.init_hidden()  # this must be here to re-init graph
-        logits_torch = self.model(inputs, hidden)
-        logits = logits_torch.detach().numpy()
-        return logits
+        res = self.model(inputs, hidden).detach().cpu().numpy()
+        return res
 
-    def get_wx(self):
-        wx_weights = self.model.wx.weight.detach().cpu().numpy()  # if stored on gpu
-        return wx_weights
+    def get_w(self, which):
+        if which == 'x':
+            wx = self.model.wx.weight.detach().cpu().numpy()
+            print('Returning wx with shape={}'.format(wx.shape))
+            return wx
+        elif which == 'y':
+            wy = self.model.wy.weight.detach().cpu().numpy()  # if stored on gpu
+            print('Returning wy with shape={}'.format(wy.shape))
+            return wy
 
 
 class TorchRNN(torch.nn.Module):

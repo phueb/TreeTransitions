@@ -29,6 +29,7 @@ params.num_seqs = 5 * 10 ** 6
 params.num_cats_list = [NUM_CATS]
 params.truncate_num_cats = NUM_CATS
 params.truncate_list = [0.5, 1.0]  # [1.0, 1.0] is okay
+params.truncate_type = 'legals'
 params.truncate_control = False
 params.num_partitions = 8
 
@@ -38,8 +39,9 @@ toy_data = ToyData(params)
 
 def plot_comparison(ys):
     fig, ax = plt.subplots(1, figsize=FIGSIZE, dpi=DPI)
-    plt.title('truncate_list={}\ntruncate_control={}\ntruncate_num_cats={}'.format(
-        params.truncate_list, params.truncate_control, params.truncate_num_cats), fontsize=AX_FONTSIZE)
+    plt.title('truncate_list={}\ntruncate_control={}\ntruncate_num_cats={}\ntruncate_type={}'.format(
+        params.truncate_list, params.truncate_control, params.truncate_num_cats, params.truncate_type),
+        fontsize=AX_FONTSIZE)
     ax.set_ylabel('singular value', fontsize=AX_FONTSIZE)
     ax.set_xlabel('Principal Component', fontsize=AX_FONTSIZE)
     ax.spines['right'].set_visible(False)

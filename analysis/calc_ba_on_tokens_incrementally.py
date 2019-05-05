@@ -17,10 +17,10 @@ NUMS_SPLITS = 4
 NUM_CATS = 32
 TRUNCATE_TYPE = 'probes'
 
-DefaultParams.num_seqs = [1 * 10 ** 6]
+DefaultParams.num_seqs = [2 * 10 ** 6]
 DefaultParams.num_cats_list = [[NUM_CATS]]
 DefaultParams.truncate_num_cats = [NUM_CATS]
-DefaultParams.truncate_list = [[0.5, 0.5], [1.0, 1.0]]
+DefaultParams.truncate_list = [[0.6, 0.6], [0.5, 0.5]]
 DefaultParams.truncate_type = [TRUNCATE_TYPE]
 
 

@@ -35,11 +35,17 @@ def main_job(param2val, min_probe_freq=10):
         for iteration in range(params.num_iterations):
             # ba
             for num_cats in params.num_cats_list:
-                wx = srn.get_wx()  # TODO also test wy
-                #
                 probes = toy_data.probes
                 probe2cat = toy_data.num_cats2probe2cat[num_cats]
-                p_acts = np.asarray([wx[toy_data.word2id[p], :] for p in probes])
+                #
+                if params.w == 'embeds':
+                    wx = srn.model.wx.weight.detach().cpu().numpy()
+                    p_acts = np.asarray([wx[toy_data.word2id[p], :] for p in probes])
+                elif params.w == 'logits':
+                    x = np.asarray([[toy_data.word2id[p]] for p in probes])
+                    p_acts = srn.calc_logits(x)
+                else:
+                    raise AttributeError('Invalid arg to "params.y".')
                 ba = calc_ba(cosine_similarity(p_acts), probes, probe2cat)
                 num_cats2bas[num_cats].append(ba)
                 print('partition={:>2}/{:>2} | ba={:.3f} num_cats={}'.format(
