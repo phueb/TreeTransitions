@@ -6,12 +6,12 @@ import numpy as np
 
 from ludwigcluster.utils import list_all_param2vals
 from treetransitions import config
-from treetransitions.params import DefaultParams as MatchParams
+from treetransitions.params import Params as MatchParams
 
 
 VERBOSE = True
 
-X_STEP = 10
+X_STEP = 5
 YLIMs = None
 FIGSIZE = (10, 10)
 TITLE_FONTSIZE = 10
@@ -19,8 +19,10 @@ PLOT_NUM_CATS_LIST = [2, 4, 8, 16, 32]
 
 
 default_dict = MatchParams.__dict__.copy()
-MatchParams.num_levels = [10]
 MatchParams.truncate_control = [False]
+MatchParams.optimization = ['sgd']
+MatchParams.learning_rate = [0.3]
+MatchParams.num_cats_list = [[2, 4, 8, 16, 32]]
 
 
 def gen_param_ps(param2requested, param2default):
