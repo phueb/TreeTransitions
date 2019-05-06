@@ -3,7 +3,7 @@ from collections import Counter
 import matplotlib.pyplot as plt
 
 from treetransitions.toy_data import ToyData
-from treetransitions.params import DefaultParams, ObjectView
+from treetransitions.params import Params, ObjectView
 from treetransitions.utils import calc_kl_divergence
 
 from ludwigcluster.utils import list_all_param2vals
@@ -14,10 +14,10 @@ TITLE_FONTSIZE = 10
 
 NUM_CATS = 32
 
-DefaultParams.num_seqs = [2 * 10 ** 6]
-DefaultParams.num_cats_list = [[2, 4, 8, 16, 32, 64, 128, 256, 512]]
-DefaultParams.truncate_num_cats = [NUM_CATS]
-DefaultParams.truncate_list = [[0.5, 0.5], [1.0, 1.0]]
+Params.num_seqs = [2 * 10 ** 6]
+Params.num_cats_list = [[2, 4, 8, 16, 32, 64, 128, 256, 512]]
+Params.truncate_num_cats = [NUM_CATS]
+Params.truncate_list = [[0.5, 0.5], [1.0, 1.0]]
 
 
 def plot_kld_trajs(ys, title, xticklabels):
@@ -40,7 +40,7 @@ def plot_kld_trajs(ys, title, xticklabels):
     plt.show()
 
 
-for param2vals in list_all_param2vals(DefaultParams, update_d={'param_name': 'test', 'job_name': 'test'}):
+for param2vals in list_all_param2vals(Params, update_d={'param_name': 'test', 'job_name': 'test'}):
 
     # params
     params = ObjectView(param2vals)

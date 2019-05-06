@@ -3,7 +3,7 @@ from sklearn.metrics.pairwise import cosine_similarity
 import matplotlib.pyplot as plt
 
 from treetransitions.toy_data import ToyData
-from treetransitions.params import DefaultParams, ObjectView
+from treetransitions.params import Params, ObjectView
 from treetransitions.utils import calc_ba
 
 from ludwigcluster.utils import list_all_param2vals
@@ -17,11 +17,11 @@ NUMS_SPLITS = 4
 NUM_CATS = 32
 TRUNCATE_TYPE = 'probes'
 
-DefaultParams.num_seqs = [2 * 10 ** 6]
-DefaultParams.num_cats_list = [[NUM_CATS]]
-DefaultParams.truncate_num_cats = [NUM_CATS]
-DefaultParams.truncate_list = [[0.6, 0.6], [0.5, 0.5]]
-DefaultParams.truncate_type = [TRUNCATE_TYPE]
+Params.num_seqs = [2 * 10 ** 6]
+Params.num_cats_list = [[NUM_CATS]]
+Params.truncate_num_cats = [NUM_CATS]
+Params.truncate_list = [[0.6, 0.6], [0.5, 0.5]]
+Params.truncate_type = [TRUNCATE_TYPE]
 
 
 def calc_ba_from_sequences_chunk(seqs_chunk, d):
@@ -58,9 +58,9 @@ def plot_ba_trajs(part_id2y, part_id2x, title):
     plt.show()
 
 
-truncate2bas = {tuple(tr): [0.5] for tr in DefaultParams.truncate_list}
-truncate2num_windows = {tuple(tr): [0] for tr in DefaultParams.truncate_list}
-for param2vals in list_all_param2vals(DefaultParams, update_d={'param_name': 'test', 'job_name': 'test'}):
+truncate2bas = {tuple(tr): [0.5] for tr in Params.truncate_list}
+truncate2num_windows = {tuple(tr): [0] for tr in Params.truncate_list}
+for param2vals in list_all_param2vals(Params, update_d={'param_name': 'test', 'job_name': 'test'}):
 
     # params
     params = ObjectView(param2vals)

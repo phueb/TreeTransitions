@@ -1,6 +1,6 @@
 import numpy as np
 
-from treetransitions.params import DefaultParams, ObjectView
+from treetransitions.params import Params, ObjectView
 from treetransitions.toy_data import ToyData
 
 from ludwigcluster.utils import list_all_param2vals
@@ -8,13 +8,13 @@ from ludwigcluster.utils import list_all_param2vals
 
 NUM_CATS = 32
 
-DefaultParams.num_seqs = [1 * 10 ** 6]
-DefaultParams.num_cats_list = [[NUM_CATS]]
-DefaultParams.truncate_num_cats = [NUM_CATS]
-DefaultParams.truncate_list = [[0.5, 0.5], [1.0, 1.0]]
+Params.num_seqs = [1 * 10 ** 6]
+Params.num_cats_list = [[NUM_CATS]]
+Params.truncate_num_cats = [NUM_CATS]
+Params.truncate_list = [[0.5, 0.5], [1.0, 1.0]]
 
 
-for param2vals in list_all_param2vals(DefaultParams, update_d={'param_name': 'test', 'job_name': 'test'}):
+for param2vals in list_all_param2vals(Params, update_d={'param_name': 'test', 'job_name': 'test'}):
 
     # params
     params = ObjectView(param2vals)

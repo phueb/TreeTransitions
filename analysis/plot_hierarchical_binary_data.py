@@ -1,14 +1,22 @@
 import numpy as np
 from matplotlib import pyplot as plt
 from scipy.spatial.distance import pdist
-from sklearn.decomposition import PCA
 from scipy.cluster.hierarchy import linkage, dendrogram
 
+from treetransitions.params import Params, ObjectView
 from treetransitions.utils import to_corr_mat
+from treetransitions.toy_data import ToyData
+from treetransitions import config
 
-num_descendants = 2  # 2
-num_levels = 12  # 10
-mutation_prob = 0.2  # 0.05, the higher, the more unique rows in data (and lower first PC)
+from ludwigcluster.utils import list_all_param2vals
+
+
+NUM_CATS = 32
+
+Params.num_seqs = [1 * 10 ** 6]
+Params.num_cats_list = [[NUM_CATS]]
+Params.truncate_num_cats = [NUM_CATS]
+Params.truncate_list = [[1.0, 1.0]]
 
 
 def cluster(m, original_row_words=None, original_col_words=None):
@@ -65,35 +73,25 @@ def plot_heatmap(mat, ytick_labels, xtick_labels,
     plt.show()
 
 
-# vocab
-num_vocab = num_descendants ** num_levels
-print('num_vocab={}'.format(num_vocab))
-vocab = ['w{}'.format(i) for i in np.arange(num_vocab)]
-word2id = {word: n for n, word in enumerate(vocab)}
+for param2vals in list_all_param2vals(Params, update_d={'param_name': 'test', 'job_name': 'test'}):
 
+    # params
+    params = ObjectView(param2vals)
+    for k, v in sorted(params.__dict__.items()):
+        print(k, v)
+    toy_data = ToyData(params, max_ba=False if config.Eval.debug else True)
 
-# make data_mat
-mat = np.zeros((num_vocab, num_vocab))
-for n in range(num_vocab):
-    node0 = -1 if np.random.binomial(n=1, p=0.5) else 1
-    mat[n] = sample_from_hierarchical_diffusion(node0, num_descendants, num_levels, mutation_prob)
-print(mat)
-# corr_mat
-corr_mat = to_corr_mat(mat)
+    # corr_mat
+    corr_mat = to_corr_mat(toy_data.legals_mat)
 
-clustered_corr_mat, row_words, col_words = cluster(corr_mat, vocab, vocab)
-plot_heatmap(clustered_corr_mat, row_words, col_words)
+    clustered_corr_mat, row_words, col_words = cluster(corr_mat, toy_data.vocab, toy_data.vocab)
+    plot_heatmap(clustered_corr_mat, row_words, col_words)
 
-# plot dg - of the CORRELATION MATRIX  - NOT THE RAW DATA MATRIX
-z = linkage(corr_mat, metric='correlation')
-fig, ax = plt.subplots(figsize=(40, 10), dpi=200)
-dendrogram(z, ax=ax)
-plt.title('Hierarchical Clustering Dendrogram', fontsize=20)
-plt.xlabel('word ids in vocab')
-plt.ylabel('distance')
-plt.show()
-
-# pca
-pca = PCA()
-fitter = pca.fit_transform(mat)
-print(['{:.4f}'.format(i) for i in pca.explained_variance_ratio_][:10])
+    # plot dg - of the CORRELATION MATRIX  - NOT THE RAW DATA MATRIX
+    z = linkage(corr_mat, metric='correlation')
+    fig, ax = plt.subplots(figsize=(40, 10), dpi=200)
+    dendrogram(z, ax=ax)
+    plt.title('Hierarchical Clustering Dendrogram', fontsize=20)
+    plt.xlabel('word ids in vocab')
+    plt.ylabel('distance')
+    plt.show()

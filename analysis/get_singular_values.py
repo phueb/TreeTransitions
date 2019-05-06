@@ -3,7 +3,7 @@ from sklearn.decomposition import PCA
 import matplotlib.pyplot as plt
 from sklearn.preprocessing import normalize
 
-from treetransitions.params import DefaultParams, ObjectView
+from treetransitions.params import Params, ObjectView
 from treetransitions.toy_data import ToyData
 
 from ludwigcluster.utils import list_all_param2vals
@@ -23,7 +23,7 @@ BINARY = False
 TRUNCATE_SIZE = 1
 NUM_CATS = 32
 
-params = ObjectView(list_all_param2vals(DefaultParams, update_d={'param_name': 'test', 'job_name': 'test'})[0])
+params = ObjectView(list_all_param2vals(Params, update_d={'param_name': 'test', 'job_name': 'test'})[0])
 params.parent_count = 1024
 params.num_seqs = 5 * 10 ** 6
 params.num_cats_list = [NUM_CATS]

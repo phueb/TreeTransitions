@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 
 
 from treetransitions.toy_data import ToyData
-from treetransitions.params import DefaultParams, ObjectView
+from treetransitions.params import Params, ObjectView
 
 from ludwigcluster.utils import list_all_param2vals
 
@@ -21,10 +21,10 @@ COLORS = ['red', 'blue']
 
 NUM_CATS = 32
 
-DefaultParams.num_seqs = [1 * 10 ** 6]
-DefaultParams.num_cats_list = [[NUM_CATS]]
-DefaultParams.truncate_num_cats = [NUM_CATS]
-DefaultParams.truncate_list = [[0.5, 0.5], [1.0, 1.0]]
+Params.num_seqs = [1 * 10 ** 6]
+Params.num_cats_list = [[NUM_CATS]]
+Params.truncate_num_cats = [NUM_CATS]
+Params.truncate_list = [[0.5, 0.5], [1.0, 1.0]]
 
 
 def make_bigram_count_mat(id_seqs_mat, num_vocab):
@@ -54,7 +54,7 @@ ax2.spines['right'].set_visible(False)
 ax2.spines['top'].set_visible(False)
 ax2.tick_params(axis='both', which='both', top=False, right=False)
 
-for param2vals in list_all_param2vals(DefaultParams, update_d={'param_name': 'test', 'job_name': 'test'}):
+for param2vals in list_all_param2vals(Params, update_d={'param_name': 'test', 'job_name': 'test'}):
 
     # params
     params = ObjectView(param2vals)
@@ -79,11 +79,11 @@ for param2vals in list_all_param2vals(DefaultParams, update_d={'param_name': 'te
         ax1.plot(y1,
                  alpha=1.0,
                  label=label if cat == 0 else '_nolegend_',
-                 color=COLORS[DefaultParams.truncate_list.index(params.truncate_list)])
+                 color=COLORS[Params.truncate_list.index(params.truncate_list)])
         ax2.plot(y2,
                  alpha=1.0,
                  label=label if cat == 0 else '_nolegend_',
-                 color=COLORS[DefaultParams.truncate_list.index(params.truncate_list)])
+                 color=COLORS[Params.truncate_list.index(params.truncate_list)])
 
     print('------------------------------------------------------')
 
