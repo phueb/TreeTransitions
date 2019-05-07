@@ -95,3 +95,4 @@ for param2vals in list_all_param2vals(Params, update_d={'param_name': 'test', 'j
     plt.xlabel('word ids in vocab')
     plt.ylabel('distance')
     plt.show()
+    print('------------------------------------------------------------')

@@ -52,7 +52,7 @@ def make_sequences_chunk(x_words, y_words, chunk_id, xw_2yws, xw2sorted_yws, num
 
 
 class ToyData:
-    def __init__(self, params, max_ba=True):
+    def __init__(self, params, max_ba=True, make_tokens=True):
         self.params = params
         self.x_words = self.make_vocab(1)  # probes
         self.y_words = self.make_vocab(0)  # non-probes (or context words)
@@ -85,11 +85,12 @@ class ToyData:
         for num_cats in self.params.num_cats_list:
             self.plot_tree(num_cats) if config.Eval.plot_tree else None
         #
-        self.word_sequences_mat = self.make_sequences_mat()
-        self.num_seqs = len(self.word_sequences_mat)  # divisible by mb_size and num_partitions
-        print('shape of word_sequences_mat={}'.format(self.word_sequences_mat.shape))
-        self.id_sequences_mat = np.asarray([[self.word2id[w] for w in seq]
-                                            for seq in self.word_sequences_mat]).reshape((self.num_seqs, -1))
+        if make_tokens:
+            self.word_sequences_mat = self.make_sequences_mat()
+            self.num_seqs = len(self.word_sequences_mat)  # divisible by mb_size and num_partitions
+            print('shape of word_sequences_mat={}'.format(self.word_sequences_mat.shape))
+            self.id_sequences_mat = np.asarray([[self.word2id[w] for w in seq]
+                                                for seq in self.word_sequences_mat]).reshape((self.num_seqs, -1))
 
     def make_vocab(self, vocab_id):
         num_vocab = self.params.num_descendants ** self.params.num_levels
@@ -116,8 +117,8 @@ class ToyData:
 
     def make_xw2yws(self):
         res = {}
-        for xw, vals in zip(self.x_words, self.legals_mat.T):
-            yws = [yw for yw, val in zip(self.y_words, vals) if val == self.yw2node0[yw]]  # node0 is required
+        for xw, col in zip(self.x_words, self.legals_mat.T):
+            yws = [yw for yw, val in zip(self.y_words, col) if val == self.yw2node0[yw]]  # node0 is required
             res[xw] = yws
         return res
 
@@ -268,7 +269,6 @@ class ToyData:
         num_remainder = len(stacked) % (self.params.mb_size * self.params.num_partitions)
         num_divisible = len(stacked) - num_remainder
         print('Shortened num_seqs to {:,}'.format(num_divisible))
-        assert len(stacked) % self.params.mb_size == 0.0
         return stacked[:num_divisible]
 
     def gen_part_id_seqs(self):
