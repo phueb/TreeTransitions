@@ -66,59 +66,45 @@ NUM_CATS = 32
 NUM_DESCENDANTS = 2
 STOP_MUTATION_LEVEL = 12
 BOTTOM_MUTATION_PROB = 0.01
-TOP_MUTATION_PROB = 0.0  # TODO vary
+TOP_MUTATION_PROB = 1.0  # set to 1.0 or 0.5
 
 NUM_VOCAB = 1024
 
 
-def calc_prob_id(rem):
-    res = 0
-    for _ in range(NUM_LEVELS):
-        res += rem // 2
-        rem = rem % 2
-        if rem <= 1:
-            return res  # TODO deal with rem = 1
+def make_overwrite_ids(cat_id):
+    res = [cat_id]
+    num_top_levels = np.log2(NUM_CATS).astype(np.int) - 1
+    for _ in range(num_top_levels):
+        prev_id = res[-1] // 2
+        res.append(prev_id)
+    return res[::-1]
 
 
 def make_nodes_template(cat_id):
-    # top_level mutation probabilities
-    top_level_ps = [TOP_MUTATION_PROB] * NUM_CATS
-    top_level_ps[cat_id] = 0
-    top_level_ps = top_level_ps[::-1]
-    num_new = len(top_level_ps)
-    prev_prob_id = cat_id
+    res = np.array([-1])
+    for overwrite_id in make_overwrite_ids(cat_id):
+        # repeat + overwrite
+        repeated = np.repeat(res, NUM_DESCENDANTS)
+        repeated[overwrite_id] = 1  # TODO test with new branching process
+        # mutate
+        res = repeated * [1 if binom else -1
+                     for binom in np.random.binomial(n=1, p=1 - TOP_MUTATION_PROB, size=len(repeated))]
+        print('binom')
+        print(np.random.binomial(n=1, p=1 - TOP_MUTATION_PROB, size=len(repeated)))
+        # overwrite
+        res[overwrite_id] = 1  # TODO test with new branching process
 
-    # TODO debug
-    print(cat_id)
-    print(top_level_ps)
-
-    for _ in range(NUM_LEVELS):
-        prob_id = calc_prob_id(prev_prob_id)
-        num_new = num_new // 2
-        new = [TOP_MUTATION_PROB] * num_new
-        new[prob_id] = 0
-        prev_prob_id = prob_id
-        top_level_ps += new[::-1]  # TODO reverse?
-        print(new[::-1])
-        #
-        if num_new == 2:
-            break
-    print('num top_level_ps={}'.format(len(top_level_ps)))
-
-    return top_level_ps[::-1]
+    return res
 
 
-def make_legals_row(res, end_num, keep_probs=None):
-    if keep_probs is None:
-        keep_probs = cycle([1 - BOTTOM_MUTATION_PROB])
-    #
+def make_legals_row(res, end_num):
     while True:  # keep branching until end_num nodes are created
-        candidate_nodes = res * NUM_DESCENDANTS
-        res = [node if np.random.binomial(n=1, p=next(keep_probs)) else -node
-               for node in candidate_nodes]
-
         if len(res) >= end_num:
             return res
+        #
+        rep = np.repeat(res, NUM_DESCENDANTS)
+        res = rep * [1 if binom else -1
+                     for binom in np.random.binomial(n=1, p=1 - BOTTOM_MUTATION_PROB, size=len(rep))]
 
 
 def make_legals_mat():
@@ -126,11 +112,15 @@ def make_legals_mat():
     row_id = 0
     for cat_id in range(NUM_CATS):
         nodes_template = make_nodes_template(cat_id)
+        print('nodes template')
+        print(nodes_template)
+        print('length of nodes_template={}'.format(len(nodes_template)))  # should be 32
         # make legals row for each member in category
         num_members = NUM_VOCAB // NUM_CATS
         for _ in range(num_members):
             legals_row = make_legals_row(nodes_template, NUM_VOCAB)
             res[row_id, :] = legals_row
+            print(legals_row)
             row_id += 1
     print(res)
     return res
