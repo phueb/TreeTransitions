@@ -11,7 +11,7 @@ NUM_CATS = 32
 
 Params.num_seqs = [8 * 64]
 Params.num_cats_list = [[NUM_CATS]]
-Params.truncate_num_cats = [NUM_CATS]
+Params.max_num_cats = [NUM_CATS]
 Params.truncate_list = [[0.5, 0.5], [1.0, 1.0]]
 
 

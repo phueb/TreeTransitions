@@ -12,7 +12,7 @@ NUM_CATS = 32
 
 Params.num_seqs = [2 * 10 ** 6]
 Params.num_cats_list = [[2, 8, NUM_CATS]]
-Params.truncate_num_cats = [NUM_CATS]
+Params.max_num_cats = [NUM_CATS]
 Params.truncate_list = [[1.0, 1.0]]
 Params.truncate_type = ['legals']
 

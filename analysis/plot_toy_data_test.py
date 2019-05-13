@@ -66,30 +66,8 @@ NUM_CATS = 32
 NUM_DESCENDANTS = 2
 STOP_MUTATION_LEVEL = 12
 BOTTOM_MUTATION_PROB = 0.00
-TOP_MUTATION_PROB = 1.0  # set to 1.0 or 0.5
 
 NUM_VOCAB = 1024
-
-
-def make_overwrite_ids(cat_id):
-    res = [cat_id]
-    num_top_levels = np.log2(NUM_CATS).astype(np.int) - 1
-    for _ in range(num_top_levels):
-        prev_id = res[-1] // 2
-        res.append(prev_id)
-    return res[::-1]
-
-
-def make_nodes_template(cat_id):
-    res = np.array([-1])
-    for overwrite_id in make_overwrite_ids(cat_id):
-        # repeat + overwrite
-        repeated = np.repeat(res, NUM_DESCENDANTS)
-        repeated[overwrite_id] = 1
-        # mutate
-        res = repeated * [1 if binom else -1
-                     for binom in np.random.binomial(n=1, p=1 - TOP_MUTATION_PROB, size=len(repeated))]
-    return res
 
 
 def make_legals_row(res, end_num):
@@ -106,18 +84,15 @@ def make_legals_mat():
     res = np.zeros((NUM_VOCAB, NUM_VOCAB), dtype=np.int)
     row_id = 0
     for cat_id in range(NUM_CATS):
-        nodes_template = make_nodes_template(cat_id)
-        print('nodes template')
-        print(nodes_template)
-        print('length of nodes_template={}'.format(len(nodes_template)))  # should be 32
-        # make legals row for each member in category
+        # nodes_template
+        nodes_template = -np.ones(NUM_CATS)
+        nodes_template[cat_id] = 1
+        # differentiate template (once for each category member)
         num_members = NUM_VOCAB // NUM_CATS
         for _ in range(num_members):
             legals_row = make_legals_row(nodes_template, NUM_VOCAB)
             res[row_id, :] = legals_row
-            print(legals_row)
             row_id += 1
-    print(res)
     return res
 
 

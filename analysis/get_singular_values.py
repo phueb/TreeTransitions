@@ -23,10 +23,10 @@ BINARY = False
 NUM_CATS = 32
 
 params = ObjectView(list_all_param2vals(Params, update_d={'param_name': 'test', 'job_name': 'test'})[0])
-params.parent_count = 1024
+params.num_probes = 1024
 params.num_seqs = 2 * 10 ** 6
 params.num_cats_list = [NUM_CATS]
-params.truncate_num_cats = NUM_CATS
+params.max_num_cats = NUM_CATS
 params.truncate_list = [1.0, 1.0]  # [1.0, 1.0] is okay
 params.truncate_type = 'probes'
 params.truncate_control = False
@@ -40,9 +40,9 @@ toy_data = ToyData(params)
 def plot_comparison(ys):
     fig, ax = plt.subplots(1, figsize=FIGSIZE, dpi=DPI)
     plt.title('truncate_list={}\ntruncate_control={}\n'
-              'truncate_num_cats={}\ntruncate_type={}\nmutation_probs={}'.format(
+              'max_num_cats={}\ntruncate_type={}\nmutation_probs={}'.format(
         params.truncate_list, params.truncate_control,
-        params.truncate_num_cats, params.truncate_type, params.mutation_probs),
+        params.max_num_cats, params.truncate_type, params.mutation_probs),
         fontsize=AX_FONTSIZE)
     ax.set_ylabel('singular value', fontsize=AX_FONTSIZE)
     ax.set_xlabel('Principal Component', fontsize=AX_FONTSIZE)

@@ -6,17 +6,18 @@ class ObjectView(object):
 
 
 class Params:
-    # input data
+    # truncate
     truncate_type = ['probes']
     truncate_control = [False]
-    truncate_num_cats = [32]
     truncate_list = [[1.0, 1.0]]
+    # input
     num_seqs = [5 * 10 ** 6]
-    num_descendants = [2]  # 2
-    num_levels = [10]  # 12
-    mutation_probs = [[0.1, 0.2], [0.2, 0.1]]  # 0.2
-    stop_mutation_level = [5]  # TODO this results in 32 categories without any lower level differentiation
-    parent_count = [1024]  # exact size of single parent cluster
+    num_vocab = [1024]
+    mutation_probs = [[0.01, 0.01]]
+    stop_mutation_level = [None]  # TODO 5 results in 32 categories without any lower level differentiation
+    # probes
+    max_num_cats = [32]
+    num_probes = [1024]  # TODO make this independent from num_vocab
     num_cats_list = [[2, 4, 8, 16, 32]]
     # rnn
     num_iterations = [10]

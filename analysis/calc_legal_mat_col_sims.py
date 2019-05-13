@@ -15,7 +15,7 @@ FONTSIZE = 12
 Params.mutation_prob = [0.2]
 Params.num_seqs = [1 * 10 ** 5]
 Params.num_cats_list = [[2]]
-Params.truncate_num_cats = [2]
+Params.max_num_cats = [2]
 Params.num_levels = [3, 4, 5, 6, 7, 8, 9, 10, 11]
 Params.learning_rate = [0.003]
 Params.truncate_list = [[1.0, 1.0]]
@@ -51,7 +51,7 @@ for param2vals in list_all_param2vals(Params, update_d={'param_name': 'test', 'j
         print(k, v)
 
     # toy data
-    params.parent_count = params.num_descendants ** params.num_levels
+    params.num_probes = params.num_descendants ** params.num_levels
     toy_data = ToyData(params, max_ba=False, make_tokens=False)
 
     # calc sim between legals_mat cols corresponding to different categories

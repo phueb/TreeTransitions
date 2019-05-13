@@ -54,8 +54,8 @@ def make_sequences_chunk(x_words, y_words, chunk_id, xw_2yws, xw2sorted_yws, num
 class ToyData:
     def __init__(self, params, max_ba=True, make_tokens=True):
         self.params = params
-        self.x_words = self.make_vocab(1)  # probes
-        self.y_words = self.make_vocab(0)  # non-probes (or context words)
+        self.x_words = self.make_x_words()  # probes
+        self.y_words = self.make_y_words()  # non-probes (or context words)
         self.num_yws = len(self.y_words)
         self.num_xws = len(self.x_words)
         #
@@ -63,27 +63,26 @@ class ToyData:
         self.num_vocab = len(self.vocab)
         self.word2id = {word: n for n, word in enumerate(self.vocab)}
         #
-        self.yw2node0 = self.make_yw2node0()
+        self.xw2cat = self.make_xw2cat()
+        self.yw2cat = self.make_yw2cat()
         self.legals_mat = self.make_legals_mat()
+        #
         self.xw2yws = self.make_xw2yws()
-        #
-        self.z = self.make_z()
-        self.probes = self.make_probes()
-        self.num_cats2probe2cat = {num_cats: self.make_probe2cat(num_cats)
-                                   for num_cats in params.num_cats_list}
-        #
-        self.num_cats2cat2yws = {num_cats: self.make_cat2yws(num_cats)
-                                 for num_cats in params.num_cats_list}
-        self.num_cats2xw2_sorted_yws = {num_cats: self.make_xw2_sorted_yws()
-                                        for num_cats in params.num_cats_list}
+        self.cat2yws = self.make_cat2yws()
+        self.xw2sorted_yws = self.make_xw2_sorted_yws()
+        # ba
         self.num_cats2max_ba = self.make_num_cats2max_ba() if max_ba else None
-        #
+        # plot
         self.num_cats2cmap = {num_cats: plt.cm.get_cmap('hsv', num_cats + 1)
                               for num_cats in params.num_cats_list}
         self.num_cats2probe2color = {num_cats: self.make_probe2color(num_cats)
                                      for num_cats in params.num_cats_list}
         for num_cats in self.params.num_cats_list:
-            self.plot_tree(num_cats) if config.Eval.plot_tree else None
+
+            if num_cats == self.params.max_num_cats:  # TODO
+
+                self.z = self.make_z() if config.Eval.plot_tree else None
+                self.plot_tree(num_cats) if config.Eval.plot_tree else None
         #
         if make_tokens:
             self.word_sequences_mat = self.make_sequences_mat()
@@ -92,120 +91,67 @@ class ToyData:
             self.id_sequences_mat = np.asarray([[self.word2id[w] for w in seq]
                                                 for seq in self.word_sequences_mat]).reshape((self.num_seqs, -1))
 
-    def make_vocab(self, vocab_id):
-        num_vocab = self.params.num_descendants ** self.params.num_levels
-        vocab = ['w{}'.format(i) for i in np.arange(num_vocab * vocab_id, num_vocab * (vocab_id + 1))]
+    def make_y_words(self):
+        vocab = ['y{}'.format(i) for i in np.arange(self.params.num_vocab)]
         return vocab
 
-    def make_yw2node0(self):
-        res = {}
-        for yw in self.y_words:
-            node0 = -1 if np.random.binomial(n=1, p=0.5) else 1
-            res[yw] = node0
+    def make_x_words(self):
+        vocab = ['x{}'.format(i) for i in np.arange(self.params.num_probes)]
+        return vocab
+
+    def make_xw2cat(self):
+        num_members = self.params.num_probes // self.params.max_num_cats
+        print('num xws in each cat={}'.format(num_members))
+        res = {xw: cat for xw, cat in zip(self.x_words, np.repeat(np.arange(self.params.max_num_cats), num_members))}
+        return res
+
+    def make_yw2cat(self):
+        num_members = self.params.num_vocab // self.params.max_num_cats
+        print('num yws in each cat={}'.format(num_members))
+        res = {yw: cat for yw, cat in zip(self.y_words, np.repeat(np.arange(self.params.max_num_cats), num_members))}
         return res
 
     def make_legals_mat(self):
         """
         each row contains a vector sampled from hierarchical process.
-        each column represents which y_words are allowed to follow an x_word (word associated with column)
+        each column (x-word) represents which y_words are allowed to follow x_word
         """
         res = np.zeros((self.num_yws, self.num_xws), dtype=np.int)
+        print('Making legals mat with shape={}'.format(res.shape))
         for n, yw in enumerate(self.y_words):
-            res[n, :] = self.sample_from_hierarchical_diffusion(self.yw2node0[yw])
+            template = -np.ones(self.params.max_num_cats)
+            cat_id = self.yw2cat[yw]
+            template[cat_id] = 1
+            res[n, :] = self.make_legals_row(template)
         print('Done')
+        print(res.sum(axis=0))
+        print(res.sum(axis=1))
         return res
+
+    # /////////////////////////////////////////////////////////////// sequences
 
     def make_xw2yws(self):
         res = {}
         for xw, col in zip(self.x_words, self.legals_mat.T):
-            yws = [yw for yw, val in zip(self.y_words, col) if val == self.yw2node0[yw]]  # node0 is required
+            yws = [yw for yw, val in zip(self.y_words, col) if val == 1]
             res[xw] = yws
         return res
 
-    # ///////////////////////////////////////////////////////////////////////// probes
-
-    def make_z(self, method='single', metric='euclidean'):
-        # careful: idx1 and idx2 in res are not integers (they are floats)
-        corr_mat = to_corr_mat(self.legals_mat)
-        res = linkage(corr_mat, metric=metric, method=method)  # need to cluster correlation matrix otherwise messy
-        return res
-
-    def get_all_probes_in_tree(self, res1, z, node_id):
-        """
-        # z should be the result of linkage,which returns an array of length n - 1
-        # giving you information about the n - 1 cluster merges which it needs to pairwise merge n clusters.
-        # Z[i] will tell us which clusters were merged in the i-th iteration.
-        # a row in z is: [idx1, idx2, distance, count]
-        # all idx >= len(X) actually refer to the cluster formed in Z[idx - len(X)]
-        """
-        try:
-            p = self.x_words[node_id.astype(int)]
-        except IndexError:  # in case idx does not refer to leaf node (then it refers to cluster)
-            new_node_id1 = z[node_id.astype(int) - self.num_xws][0]
-            new_node_id2 = z[node_id.astype(int) - self.num_xws][1]
-            self.get_all_probes_in_tree(res1, z, new_node_id1)
-            self.get_all_probes_in_tree(res1, z, new_node_id2)
-        else:
-            res1.append(p)
-
-    def make_probes(self):
-        # find cluster (identified by idx1 and idx2) with parent_count nodes beneath it
-        for row in self.z:
-            idx1, idx2, dist, count = row
-            if count == self.params.parent_count:
-                break
-        else:
-            raise RuntimeError('Did not find any cluster with count={}'.format(self.params.parent_count))
-        # get probes - tree structure is preserved in order of how probes are retrieved from tree
-        res = []
-        for idx in [idx1, idx2]:
-            self.get_all_probes_in_tree(res, self.z, idx)
-        print('Collected {} probes'.format(len(res)))
-        assert set(self.x_words) == set(res)
-        return res
-
-    def make_probe2cat(self, num_cats):
-        print('Assigning probes to {} categories'.format(num_cats))
-        num_members = self.params.parent_count / num_cats
-        assert num_members.is_integer()
-        num_members = int(num_members)
-        #
-        assert num_cats % 2 == 0
-        res = {}
-
-        for cat, cat_probes in enumerate(itertoolz.partition_all(num_members, self.probes)):
-            assert len(cat_probes) == num_members
-            res.update({p: cat for p in cat_probes})
-        return res
-
-    def make_probe2color(self, num_cats):
-        res = {}
-        cmap = self.num_cats2cmap[num_cats]
-        for p in self.probes:
-            cat = self.num_cats2probe2cat[num_cats][p]
-            res[p] = to_hex(cmap(cat))
-        return res
-
-    def make_cat2yws(self, num_cats):
-        res = {cat: [] for cat in range(num_cats)}
-        probe2cat = self.num_cats2probe2cat[num_cats]
-        for p, cat in probe2cat.items():
+    def make_cat2yws(self):
+        res = {cat: [] for cat in range(self.params.max_num_cats)}
+        for p, cat in self.xw2cat.items():
             yws = self.xw2yws[p]
             res[cat] += yws
         return res
-
-    # /////////////////////////////////////////////////////////////// sequences
 
     def make_xw2_sorted_yws(self):
         assert isinstance(self.params.truncate_control, bool)  # if [False], it would incorrectly evaluate to True
         print('truncate_control={}'.format(self.params.truncate_control))
         #
         res = {}
-        probe2cat = self.num_cats2probe2cat[self.params.truncate_num_cats]
-        cat2yws = self.num_cats2cat2yws[self.params.truncate_num_cats]
         for xw in self.x_words:
-            cat = probe2cat[xw]
-            cat_yws = cat2yws[cat]
+            cat = self.xw2cat[xw]
+            cat_yws = self.cat2yws[cat]
             cat_yws2freq = Counter(cat_yws)
             #
             sorted_yws = sorted(set(cat_yws), key=cat_yws2freq.get)  # sorts in ascending order
@@ -214,23 +160,25 @@ class ToyData:
             res[xw] = sorted_yws
         return res
 
-    def sample_from_hierarchical_diffusion(self, node0):
-        """the higher the change probability (e),
-         the less variance accounted for by higher-up nodes"""
+    def make_legals_row(self, res):
+        """
+        for a given context_word, create binary vector representing which probes it is allowed to follow
+        """
 
         # TODO
         assert self.params.mutation_probs[0] == self.params.mutation_probs[1]
         mutation_prob = self.params.mutation_probs[0]
 
-        nodes = [node0]
-        for level in range(self.params.num_levels):
-            candidate_nodes = nodes * self.params.num_descendants
-            s = len(candidate_nodes)
-            mutation_prob = 0 if level >= self.params.stop_mutation_level else mutation_prob
-            nodes = [node if p else -node
-                     for node, p in zip(candidate_nodes,
-                                        np.random.binomial(n=2, p=1 - mutation_prob, size=s))]
-        return nodes
+        num_descendants = 2
+        level = 0
+        while True:  # keep branching until num_probes elements exist
+            if len(res) >= self.params.num_probes:
+                return res
+            rep = np.repeat(res, num_descendants)
+            if level == self.params.stop_mutation_level:
+                mutation_prob = 0
+            res = rep * [1 if b else -1 for b in np.random.binomial(n=1, p=1 - mutation_prob, size=len(rep))]
+            level += 1
 
     def make_sequences_mat(self, num_chunks=32):
         """
@@ -250,10 +198,9 @@ class ToyData:
         # truncate_steps = np.linspace(min_truncate, max_truncate, num_chunks + 2)[1:-1]
         truncate_steps = np.linspace(min_truncate, max_truncate, num_chunks)
         num_seqs_in_chunk = self.params.num_seqs // num_chunks
-        xw2sorted_yws = self.num_cats2xw2_sorted_yws[self.params.truncate_num_cats]
         results = [pool.apply_async(
             make_sequences_chunk,
-            args=(self.x_words, self.y_words, chunk_id, self.xw2yws, xw2sorted_yws,
+            args=(self.x_words, self.y_words, chunk_id, self.xw2yws, self.xw2sorted_yws,
                   num_seqs_in_chunk, truncate_steps[chunk_id], self.params.truncate_type))
             for chunk_id in range(num_chunks)]
         chunks = []
@@ -287,43 +234,55 @@ class ToyData:
     def make_num_cats2max_ba(self):
         res = {}
         for num_cats in self.params.num_cats_list:
-            probes = self.probes
-            probe2cat = self.num_cats2probe2cat[num_cats]
-            # probe_acts1 = self.legals_mat[[self.word2id1[p] for p in probes], :]
-            # ba1 = calc_ba(cosine_similarity(probe_acts1), probes, probe2cat)
+            probes = self.x_words
             probe_acts2 = self.legals_mat[:, [self.x_words.index(p) for p in probes]].T
-            ba2 = calc_ba(cosine_similarity(probe_acts2), probes, probe2cat)
-            # print('input-data row-wise ba={:.3f}'.format(ba1))
+            ba2 = calc_ba(cosine_similarity(probe_acts2), probes, self.xw2cat)
             print('input-data col-wise ba={:.3f}'.format(ba2))
-            print()
             res[num_cats] = ba2
         return res
 
+    def make_z(self, method='single', metric='euclidean'):
+        # careful: idx1 and idx2 in res are not integers (they are floats)
+        corr_mat = to_corr_mat(self.legals_mat)
+        res = linkage(corr_mat, metric=metric, method=method)  # need to cluster correlation matrix otherwise messy
+        return res
+
+    def make_probe2color(self, num_cats):
+        res = {}
+        cmap = self.num_cats2cmap[num_cats]
+        for xw in self.x_words:
+            cat = self.xw2cat[xw]
+            res[xw] = to_hex(cmap(cat))
+        return res
+
     def plot_tree(self, num_cats):
-        probe2color = self.num_cats2probe2color[num_cats]
+        print('Plotting tree with num_cats={}'.format(num_cats))
+        assert num_cats == self.params.max_num_cats  # only works like this right now
+        xw2color = self.num_cats2probe2color[num_cats]
         link2color = {}
         for i, i12 in enumerate(self.z[:, :2].astype(int)):
             c1, c2 = (link2color[x] if x > len(self.z)
-                      else probe2color[self.vocab[x.astype(int)]]
+                      else xw2color[self.x_words[x.astype(int)]]
                       for x in i12)
             link2color[i + 1 + len(self.z)] = c1 if c1 == c2 else 'grey'
-        #
-        cmap = self.num_cats2cmap[num_cats]
-        fig, ax = plt.subplots(figsize=(20, 10), dpi=100)
+        # plot
+        fig, ax = plt.subplots(figsize=(10, 5), dpi=None)
         dg = dendrogram(self.z, ax=ax, color_threshold=None, link_color_func=lambda i: link2color[i])
-        reordered_vocab = np.asarray(self.vocab)[dg['leaves']]
-        ax.set_xticklabels([w if w in self.probes else '' for w in reordered_vocab], fontsize=6)
-        # assign x tick label color
-        probe2_cat = self.num_cats2probe2cat[num_cats]
-        colors = [to_hex(cmap(i)) for i in range(num_cats)]
-        for n, w in enumerate(self.vocab):
-            try:
-                cat = probe2_cat[w]
-            except KeyError:
-                continue
-            else:
-                color = colors[cat]
-                ax.get_xticklabels()[n].set_color(color)  # TODO doesn't work
+        ax.set_xticklabels([])
+        # label
+        # reordered_vocab = np.asarray(self.vocab)[dg['leaves']]
+        # ax.set_xticklabels([w if w in self.x_words else '' for w in reordered_vocab], fontsize=6)
+        # # assign x tick label color
+        # cmap = self.num_cats2cmap[num_cats]
+        # colors = [to_hex(cmap(i)) for i in range(num_cats)]
+        # for n, w in enumerate(self.vocab):
+        #     try:
+        #         cat = self.xw2cat[w]
+        #     except KeyError:
+        #         continue
+        #     else:
+        #         color = colors[cat]
+        #         ax.get_xticklabels()[n].set_color(color)  # TODO doesn't work
         plt.show()
         #
         # clustered_corr_mat = corr_mat[dg['leaves'], :]
