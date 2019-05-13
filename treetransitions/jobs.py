@@ -36,7 +36,7 @@ def main_job(param2val):
             # ba
             for num_cats in params.num_cats_list:
                 probes = toy_data.x_words
-                probe2cat = toy_data.xw2cat
+                probe2cat = toy_data.num_cats2xw2cat[num_cats]
                 #
                 if params.w == 'embeds':
                     wx = srn.model.wx.weight.detach().cpu().numpy()
@@ -104,7 +104,7 @@ def main_job_with_incremental_mutation_prob(param2val):
                 # ba
                 for num_cats in params.num_cats_list:
                     probes = toy_data.x_words
-                    probe2cat = toy_data.xw2cat
+                    probe2cat = toy_data.num_cats2xw2cat[num_cats]
                     #
                     if params.w == 'embeds':
                         wx = srn.model.wx.weight.detach().cpu().numpy()

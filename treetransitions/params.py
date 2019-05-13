@@ -12,13 +12,13 @@ class Params:
     truncate_list = [[1.0, 1.0]]
     # input
     num_seqs = [5 * 10 ** 6]
-    num_vocab = [1024]
+    num_contexts = [1024]
     mutation_probs = [[0.01, 0.01]]
-    stop_mutation_level = [None]  # TODO 5 results in 32 categories without any lower level differentiation
+    stop_mutation_level = [None]  # TODO test
     # probes
-    max_num_cats = [32]
+    min_num_cats = [32]
     num_probes = [1024]  # TODO make this independent from num_vocab
-    num_cats_list = [[2, 4, 8, 16, 32]]
+    num_cats_list = [[32, 64, 128, 256, 512]]  # only makes sense to use bigger than min_num_cats
     # rnn
     num_iterations = [10]
     num_partitions = [1]

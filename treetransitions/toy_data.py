@@ -54,16 +54,18 @@ def make_sequences_chunk(x_words, y_words, chunk_id, xw_2yws, xw2sorted_yws, num
 class ToyData:
     def __init__(self, params, max_ba=True, make_tokens=True):
         self.params = params
+        assert min(self.params.num_cats_list) == self.params.min_num_cats
         self.x_words = self.make_x_words()  # probes
         self.y_words = self.make_y_words()  # non-probes (or context words)
         self.num_yws = len(self.y_words)
         self.num_xws = len(self.x_words)
         #
         self.vocab = list(set(self.y_words + self.x_words))
-        self.num_vocab = len(self.vocab)
+        self.num_vocab = len(self.vocab)  # used by rnn
         self.word2id = {word: n for n, word in enumerate(self.vocab)}
         #
-        self.xw2cat = self.make_xw2cat()
+        self.num_cats2xw2cat = {num_cats: self.make_xw2cat(num_cats) for num_cats in params.num_cats_list}
+        self.xw2cat = self.num_cats2xw2cat[self.params.min_num_cats]
         self.yw2cat = self.make_yw2cat()
         self.legals_mat = self.make_legals_mat()
         #
@@ -73,16 +75,11 @@ class ToyData:
         # ba
         self.num_cats2max_ba = self.make_num_cats2max_ba() if max_ba else None
         # plot
-        self.num_cats2cmap = {num_cats: plt.cm.get_cmap('hsv', num_cats + 1)
-                              for num_cats in params.num_cats_list}
-        self.num_cats2probe2color = {num_cats: self.make_probe2color(num_cats)
-                                     for num_cats in params.num_cats_list}
+        self.num_cats2cmap = {num_cats: plt.cm.get_cmap('hsv', num_cats + 1) for num_cats in params.num_cats_list}
+        self.num_cats2probe2color = {num_cats: self.make_xw2color(num_cats) for num_cats in params.num_cats_list}
         for num_cats in self.params.num_cats_list:
-
-            if num_cats == self.params.max_num_cats:  # TODO
-
-                self.z = self.make_z() if config.Eval.plot_tree else None
-                self.plot_tree(num_cats) if config.Eval.plot_tree else None
+            self.z = self.make_z() if config.Eval.plot_tree else None
+            self.plot_tree(num_cats) if config.Eval.plot_tree else None
         #
         if make_tokens:
             self.word_sequences_mat = self.make_sequences_mat()
@@ -92,23 +89,23 @@ class ToyData:
                                                 for seq in self.word_sequences_mat]).reshape((self.num_seqs, -1))
 
     def make_y_words(self):
-        vocab = ['y{}'.format(i) for i in np.arange(self.params.num_vocab)]
+        vocab = ['y{}'.format(i) for i in np.arange(self.params.num_contexts)]
         return vocab
 
     def make_x_words(self):
         vocab = ['x{}'.format(i) for i in np.arange(self.params.num_probes)]
         return vocab
 
-    def make_xw2cat(self):
-        num_members = self.params.num_probes // self.params.max_num_cats
+    def make_xw2cat(self, num_cats):
+        num_members = self.params.num_probes // num_cats
         print('num xws in each cat={}'.format(num_members))
-        res = {xw: cat for xw, cat in zip(self.x_words, np.repeat(np.arange(self.params.max_num_cats), num_members))}
+        res = {xw: cat for xw, cat in zip(self.x_words, np.repeat(np.arange(num_cats), num_members))}
         return res
 
     def make_yw2cat(self):
-        num_members = self.params.num_vocab // self.params.max_num_cats
+        num_members = self.params.num_contexts // self.params.min_num_cats
         print('num yws in each cat={}'.format(num_members))
-        res = {yw: cat for yw, cat in zip(self.y_words, np.repeat(np.arange(self.params.max_num_cats), num_members))}
+        res = {yw: cat for yw, cat in zip(self.y_words, np.repeat(np.arange(self.params.min_num_cats), num_members))}
         return res
 
     def make_legals_mat(self):
@@ -119,13 +116,33 @@ class ToyData:
         res = np.zeros((self.num_yws, self.num_xws), dtype=np.int)
         print('Making legals mat with shape={}'.format(res.shape))
         for n, yw in enumerate(self.y_words):
-            template = -np.ones(self.params.max_num_cats)
+            template = -np.ones(self.params.min_num_cats)
             cat_id = self.yw2cat[yw]
             template[cat_id] = 1
             res[n, :] = self.make_legals_row(template)
         print('Done')
-        print(res.sum(axis=0))
-        print(res.sum(axis=1))
+        # plot
+        if config.Eval.debug:
+            fig, ax = plt.subplots(figsize=(10, 10), dpi=None)
+            # heatmap
+            print('Plotting heatmap...')
+            ax.imshow(res,
+                      aspect='equal',
+                      cmap=plt.get_cmap('jet'),
+                      interpolation='nearest')
+            # xticks
+            num_cols = len(res.T)
+            ax.set_xticks(np.arange(num_cols))
+            ax.xaxis.set_ticklabels([])
+            # yticks
+            num_rows = len(res)
+            ax.set_yticks(np.arange(num_rows))
+            ax.yaxis.set_ticklabels([])
+            # remove ticklines
+            lines = (ax.xaxis.get_ticklines() +
+                     ax.yaxis.get_ticklines())
+            plt.setp(lines, visible=False)
+            plt.show()
         return res
 
     # /////////////////////////////////////////////////////////////// sequences
@@ -138,7 +155,7 @@ class ToyData:
         return res
 
     def make_cat2yws(self):
-        res = {cat: [] for cat in range(self.params.max_num_cats)}
+        res = {cat: [] for cat in range(self.params.min_num_cats)}
         for p, cat in self.xw2cat.items():
             yws = self.xw2yws[p]
             res[cat] += yws
@@ -236,7 +253,7 @@ class ToyData:
         for num_cats in self.params.num_cats_list:
             probes = self.x_words
             probe_acts2 = self.legals_mat[:, [self.x_words.index(p) for p in probes]].T
-            ba2 = calc_ba(cosine_similarity(probe_acts2), probes, self.xw2cat)
+            ba2 = calc_ba(cosine_similarity(probe_acts2), probes, self.num_cats2xw2cat[num_cats])
             print('input-data col-wise ba={:.3f}'.format(ba2))
             res[num_cats] = ba2
         return res
@@ -247,17 +264,16 @@ class ToyData:
         res = linkage(corr_mat, metric=metric, method=method)  # need to cluster correlation matrix otherwise messy
         return res
 
-    def make_probe2color(self, num_cats):
+    def make_xw2color(self, num_cats):
         res = {}
         cmap = self.num_cats2cmap[num_cats]
         for xw in self.x_words:
-            cat = self.xw2cat[xw]
+            cat = self.num_cats2xw2cat[num_cats][xw]
             res[xw] = to_hex(cmap(cat))
         return res
 
     def plot_tree(self, num_cats):
         print('Plotting tree with num_cats={}'.format(num_cats))
-        assert num_cats == self.params.max_num_cats  # only works like this right now
         xw2color = self.num_cats2probe2color[num_cats]
         link2color = {}
         for i, i12 in enumerate(self.z[:, :2].astype(int)):
@@ -267,25 +283,6 @@ class ToyData:
             link2color[i + 1 + len(self.z)] = c1 if c1 == c2 else 'grey'
         # plot
         fig, ax = plt.subplots(figsize=(10, 5), dpi=None)
-        dg = dendrogram(self.z, ax=ax, color_threshold=None, link_color_func=lambda i: link2color[i])
+        dendrogram(self.z, ax=ax, color_threshold=None, link_color_func=lambda i: link2color[i])
         ax.set_xticklabels([])
-        # label
-        # reordered_vocab = np.asarray(self.vocab)[dg['leaves']]
-        # ax.set_xticklabels([w if w in self.x_words else '' for w in reordered_vocab], fontsize=6)
-        # # assign x tick label color
-        # cmap = self.num_cats2cmap[num_cats]
-        # colors = [to_hex(cmap(i)) for i in range(num_cats)]
-        # for n, w in enumerate(self.vocab):
-        #     try:
-        #         cat = self.xw2cat[w]
-        #     except KeyError:
-        #         continue
-        #     else:
-        #         color = colors[cat]
-        #         ax.get_xticklabels()[n].set_color(color)  # TODO doesn't work
         plt.show()
-        #
-        # clustered_corr_mat = corr_mat[dg['leaves'], :]
-        # clustered_corr_mat = clustered_corr_mat[:, dg['leaves']]
-        # plot_heatmap(clustered_corr_mat, [], [], dpi=None)
-        # plot_heatmap(cluster(data_mat), [], [], dpi=None)
