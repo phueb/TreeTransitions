@@ -6,7 +6,6 @@ from scipy.cluster.hierarchy import linkage, dendrogram
 from treetransitions.params import Params, ObjectView
 from treetransitions.utils import to_corr_mat
 from treetransitions.toy_data import ToyData
-from treetransitions import config
 
 from ludwigcluster.utils import list_all_param2vals
 
@@ -14,6 +13,7 @@ from ludwigcluster.utils import list_all_param2vals
 NUM_CATS = 32
 
 Params.num_seqs = [1 * 10 ** 6]
+Params.mutation_probs = [[0.1, 0.1], [0.2, 0.2]]
 Params.num_cats_list = [[NUM_CATS]]
 Params.truncate_num_cats = [NUM_CATS]
 Params.truncate_list = [[1.0, 1.0]]
@@ -79,20 +79,20 @@ for param2vals in list_all_param2vals(Params, update_d={'param_name': 'test', 'j
     params = ObjectView(param2vals)
     for k, v in sorted(params.__dict__.items()):
         print(k, v)
-    toy_data = ToyData(params, max_ba=False if config.Eval.debug else True)
+    toy_data = ToyData(params, max_ba=False, make_tokens=False)
 
     # corr_mat
     corr_mat = to_corr_mat(toy_data.legals_mat)
 
     clustered_corr_mat, row_words, col_words = cluster(corr_mat, toy_data.vocab, toy_data.vocab)
-    plot_heatmap(clustered_corr_mat, row_words, col_words)
+    plot_heatmap(clustered_corr_mat, [], [])  # row_words, col_words
 
     # plot dg - of the CORRELATION MATRIX  - NOT THE RAW DATA MATRIX
-    z = linkage(corr_mat, metric='correlation')
-    fig, ax = plt.subplots(figsize=(40, 10), dpi=200)
-    dendrogram(z, ax=ax)
-    plt.title('Hierarchical Clustering Dendrogram', fontsize=20)
-    plt.xlabel('word ids in vocab')
-    plt.ylabel('distance')
-    plt.show()
+    # z = linkage(corr_mat, metric='correlation')
+    # fig, ax = plt.subplots(figsize=(40, 10), dpi=200)
+    # dendrogram(z, ax=ax)
+    # plt.title('Hierarchical Clustering Dendrogram', fontsize=20)
+    # plt.xlabel('word ids in vocab')
+    # plt.ylabel('distance')
+    # plt.show()
     print('------------------------------------------------------------')

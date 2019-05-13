@@ -10,7 +10,7 @@ from ludwigcluster.utils import list_all_param2vals
 
 
 # fig
-PLOT_NUM_SVS = 128
+PLOT_NUM_SVS = 8
 LEG_FONTSIZE = 16
 AX_FONTSIZE = 16
 FIGSIZE = (8, 8)
@@ -20,18 +20,18 @@ DPI = None
 BINARY = False
 
 # toy data
-TRUNCATE_SIZE = 1
 NUM_CATS = 32
 
 params = ObjectView(list_all_param2vals(Params, update_d={'param_name': 'test', 'job_name': 'test'})[0])
 params.parent_count = 1024
-params.num_seqs = 5 * 10 ** 6
+params.num_seqs = 2 * 10 ** 6
 params.num_cats_list = [NUM_CATS]
 params.truncate_num_cats = NUM_CATS
-params.truncate_list = [0.5, 1.0]  # [1.0, 1.0] is okay
-params.truncate_type = 'legals'
+params.truncate_list = [1.0, 1.0]  # [1.0, 1.0] is okay
+params.truncate_type = 'probes'
 params.truncate_control = False
-params.num_partitions = 8
+params.num_partitions = 1
+params.mutation_probs = [0.2, 0.2]
 
 
 toy_data = ToyData(params)
@@ -39,14 +39,17 @@ toy_data = ToyData(params)
 
 def plot_comparison(ys):
     fig, ax = plt.subplots(1, figsize=FIGSIZE, dpi=DPI)
-    plt.title('truncate_list={}\ntruncate_control={}\ntruncate_num_cats={}\ntruncate_type={}'.format(
-        params.truncate_list, params.truncate_control, params.truncate_num_cats, params.truncate_type),
+    plt.title('truncate_list={}\ntruncate_control={}\n'
+              'truncate_num_cats={}\ntruncate_type={}\nmutation_probs={}'.format(
+        params.truncate_list, params.truncate_control,
+        params.truncate_num_cats, params.truncate_type, params.mutation_probs),
         fontsize=AX_FONTSIZE)
     ax.set_ylabel('singular value', fontsize=AX_FONTSIZE)
     ax.set_xlabel('Principal Component', fontsize=AX_FONTSIZE)
     ax.spines['right'].set_visible(False)
     ax.spines['top'].set_visible(False)
     ax.tick_params(axis='both', which='both', top=False, right=False)
+    ax.set_ylim([0, 14])
     # plot
     for n, y in enumerate(ys):
         ax.plot(y, label='partition {}'.format(n + 1), linewidth=2)
@@ -86,8 +89,3 @@ for id_seq_mat_chunk in np.vsplit(toy_data.id_sequences_mat, params.num_partitio
 
 # plot
 plot_comparison(singular_vals)
-
-print('\ntruncate_control={}'.format(params.truncate_control))
-
-
-

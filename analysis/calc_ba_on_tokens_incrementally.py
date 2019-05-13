@@ -9,18 +9,18 @@ from treetransitions.utils import calc_ba
 from ludwigcluster.utils import list_all_param2vals
 
 
-FIGSIZE = (10, 5)
+FIGSIZE = (5, 5)
 TITLE_FONTSIZE = 10
 
 NUMS_SPLITS = 4
 
 NUM_CATS = 32
-TRUNCATE_TYPE = 'probes'
+TRUNCATE_TYPE = 'legals'
 
 Params.num_seqs = [2 * 10 ** 6]
 Params.num_cats_list = [[NUM_CATS]]
 Params.truncate_num_cats = [NUM_CATS]
-Params.truncate_list = [[0.6, 0.6], [0.5, 0.5]]
+Params.truncate_list = [[0.5, 1.0], [1.0, 1.0]]
 Params.truncate_type = [TRUNCATE_TYPE]
 
 
@@ -48,6 +48,8 @@ def plot_ba_trajs(part_id2y, part_id2x, title):
     ax.spines['top'].set_visible(False)
     ax.tick_params(axis='both', which='both', top=False, right=False)
     ax.yaxis.grid(True)
+    ax.set_xticks(list(part_id2x.values()))  # TODO test
+    ax.set_xticklabels(list(part_id2x.values()))
     # plot
     for tr, y in part_id2y.items():
         x = part_id2x[tr]
@@ -88,6 +90,6 @@ for param2vals in list_all_param2vals(Params, update_d={'param_name': 'test', 'j
 
 # plot
 plot_ba_trajs(truncate2bas, truncate2num_windows,
-              title='Does ba rise faster when truncate=0.5?\n'
+              title='Does ba rise faster in toy data partition1?\n'
                     'model=bag-of-words\n'
                     'truncate_type={}'.format(TRUNCATE_TYPE))

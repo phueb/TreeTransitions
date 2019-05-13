@@ -217,13 +217,19 @@ class ToyData:
     def sample_from_hierarchical_diffusion(self, node0):
         """the higher the change probability (e),
          the less variance accounted for by higher-up nodes"""
+
+        # TODO
+        assert self.params.mutation_probs[0] == self.params.mutation_probs[1]
+        mutation_prob = self.params.mutation_probs[0]
+
         nodes = [node0]
         for level in range(self.params.num_levels):
             candidate_nodes = nodes * self.params.num_descendants
             s = len(candidate_nodes)
+            mutation_prob = 0 if level >= self.params.stop_mutation_level else mutation_prob
             nodes = [node if p else -node
                      for node, p in zip(candidate_nodes,
-                                        np.random.binomial(n=2, p=1 - self.params.mutation_prob, size=s))]
+                                        np.random.binomial(n=2, p=1 - mutation_prob, size=s))]
         return nodes
 
     def make_sequences_mat(self, num_chunks=32):
