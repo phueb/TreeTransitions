@@ -47,10 +47,6 @@ if __name__ == '__main__':
     if namespace.debug:
         config.Eval.debug = True
     #
-    # TODO remove this
-    run_on_host()
-
-
     if namespace.local:
         run_on_host()
     else:

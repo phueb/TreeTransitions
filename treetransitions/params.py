@@ -11,16 +11,17 @@ class Params:
     truncate_control = [False]
     truncate_list = [[1.0, 1.0]]
     # input
-    num_seqs = [5 * 10 ** 6]
+    num_seqs = [1 * 10 ** 6]
     num_contexts = [1024]
-    mutation_probs = [[0.01, 0.01]]
+    mutation_probs = [[0.01, 0.01], [0.1, 0.1]]
     stop_mutation_level = [None]  # TODO test
+    template_noise = [0.1, 0.3]  # TODO test
     # probes
     min_num_cats = [32]
-    num_probes = [1024]  # TODO make this independent from num_vocab
+    num_probes = [1024]
     num_cats_list = [[32, 64, 128, 256, 512]]  # only makes sense to use bigger than min_num_cats
     # rnn
-    num_iterations = [10]
+    num_iterations = [20]
     num_partitions = [1]
     rnn_type = ['srn']
     bptt = [1]

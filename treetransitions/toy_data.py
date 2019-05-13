@@ -116,16 +116,22 @@ class ToyData:
         res = np.zeros((self.num_yws, self.num_xws), dtype=np.int)
         print('Making legals mat with shape={}'.format(res.shape))
         for n, yw in enumerate(self.y_words):
+            # category template
             template = -np.ones(self.params.min_num_cats)
+            template *= [1 if binom else -1 for binom in np.random.binomial(
+                n=1, p=1 - self.params.template_noise, size=len(template))]
             cat_id = self.yw2cat[yw]
-            template[cat_id] = 1
+            template[cat_id] = 1  # do this after adding noise
+            # collect
             res[n, :] = self.make_legals_row(template)
         print('Done')
         # plot
-        if config.Eval.debug:
+        if config.Eval.plot_legals_mat:
             fig, ax = plt.subplots(figsize=(10, 10), dpi=None)
             # heatmap
             print('Plotting heatmap...')
+            plt.title('template_noise={}\nmutation_probs={}'.format(
+                self.params.template_noise, self.params.mutation_probs))
             ax.imshow(res,
                       aspect='equal',
                       cmap=plt.get_cmap('jet'),
