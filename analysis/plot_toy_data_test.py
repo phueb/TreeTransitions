@@ -65,7 +65,7 @@ NUM_CATS = 32
 
 NUM_DESCENDANTS = 2
 STOP_MUTATION_LEVEL = 12
-BOTTOM_MUTATION_PROB = 0.01
+BOTTOM_MUTATION_PROB = 0.00
 TOP_MUTATION_PROB = 1.0  # set to 1.0 or 0.5
 
 NUM_VOCAB = 1024
@@ -85,15 +85,10 @@ def make_nodes_template(cat_id):
     for overwrite_id in make_overwrite_ids(cat_id):
         # repeat + overwrite
         repeated = np.repeat(res, NUM_DESCENDANTS)
-        repeated[overwrite_id] = 1  # TODO test with new branching process
+        repeated[overwrite_id] = 1
         # mutate
         res = repeated * [1 if binom else -1
                      for binom in np.random.binomial(n=1, p=1 - TOP_MUTATION_PROB, size=len(repeated))]
-        print('binom')
-        print(np.random.binomial(n=1, p=1 - TOP_MUTATION_PROB, size=len(repeated)))
-        # overwrite
-        res[overwrite_id] = 1  # TODO test with new branching process
-
     return res
 
 
