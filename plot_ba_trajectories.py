@@ -20,7 +20,6 @@ PLOT_NUM_CATS_LIST = [2, 4, 8, 16, 32]
 
 default_dict = MatchParams.__dict__.copy()
 MatchParams.truncate_control = [False]
-MatchParams.num_cats_list = [[2, 4, 8, 16, 32]]
 
 
 def gen_param_ps(param2requested, param2default):

@@ -6,16 +6,11 @@ class ObjectView(object):
 
 
 class Params:
-    # truncate
-    truncate_type = ['probes']
-    truncate_control = [False]
-    truncate_list = [[1.0, 1.0]]
     # input
     num_seqs = [1 * 10 ** 6]
     num_contexts = [1024]
-    mutation_probs = [[0.01, 0.01], [0.1, 0.1]]
-    stop_mutation_level = [None]  # TODO test
-    template_noise = [0.1, 0.3]  # TODO test
+    mutation_prob = [0.1, 0.01]
+    template_noise = [0.1, 0.3]  # higher template noise -> higher ba due to more cues being expanded (branching)
     # probes
     min_num_cats = [32]
     num_probes = [1024]

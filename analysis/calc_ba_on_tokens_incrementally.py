@@ -20,7 +20,6 @@ TRUNCATE_TYPE = 'legals'
 Params.num_seqs = [2 * 10 ** 6]
 Params.num_cats_list = [[NUM_CATS]]
 Params.min_num_cats = [NUM_CATS]
-Params.truncate_list = [[0.5, 1.0], [1.0, 1.0]]
 Params.truncate_type = [TRUNCATE_TYPE]
 
 

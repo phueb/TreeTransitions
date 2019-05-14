@@ -27,11 +27,8 @@ params.num_probes = 1024
 params.num_seqs = 2 * 10 ** 6
 params.num_cats_list = [NUM_CATS]
 params.min_num_cats = NUM_CATS
-params.truncate_list = [1.0, 1.0]  # [1.0, 1.0] is okay
-params.truncate_type = 'probes'
-params.truncate_control = False
 params.num_partitions = 1
-params.mutation_probs = [0.2, 0.2]
+params.mutation_prob = [0.01]
 
 
 toy_data = ToyData(params)
@@ -39,10 +36,8 @@ toy_data = ToyData(params)
 
 def plot_comparison(ys):
     fig, ax = plt.subplots(1, figsize=FIGSIZE, dpi=DPI)
-    plt.title('truncate_list={}\ntruncate_control={}\n'
-              'min_num_cats={}\ntruncate_type={}\nmutation_probs={}'.format(
-        params.truncate_list, params.truncate_control,
-        params.min_num_cats, params.truncate_type, params.mutation_probs),
+    plt.title('min_num_cats={}\nmutation_prob={}'.format(
+        params.min_num_cats, params.mutation_prob),
         fontsize=AX_FONTSIZE)
     ax.set_ylabel('singular value', fontsize=AX_FONTSIZE)
     ax.set_xlabel('Principal Component', fontsize=AX_FONTSIZE)
