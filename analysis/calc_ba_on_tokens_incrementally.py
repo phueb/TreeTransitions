@@ -12,15 +12,16 @@ from ludwigcluster.utils import list_all_param2vals
 FIGSIZE = (5, 5)
 TITLE_FONTSIZE = 10
 
-NUMS_SPLITS = 4
+NUMS_SPLITS = 8
 
 NUM_CATS = 32
-TRUNCATE_TYPE = 'legals'
 
-Params.num_seqs = [2 * 10 ** 6]
+Params.num_seqs = [1 * 10 ** 5]
 Params.num_cats_list = [[NUM_CATS]]
 Params.min_num_cats = [NUM_CATS]
-Params.truncate_type = [TRUNCATE_TYPE]
+Params.reverse = [False]
+Params.mutation_prob = [0.05]
+Params.template_noise = [0.6]
 
 
 def calc_ba_from_sequences_chunk(seqs_chunk, d):
@@ -38,57 +39,56 @@ def calc_ba_from_sequences_chunk(seqs_chunk, d):
     return ba
 
 
-def plot_ba_trajs(part_id2y, part_id2x, title):
+def plot_ba_trajs(r2y, x, title):
     fig, ax = plt.subplots(figsize=FIGSIZE, dpi=None)
     plt.title(title, fontsize=TITLE_FONTSIZE)
-    ax.set_xlabel('Samples from Toy Data')
+    ax.set_xlabel('Location Toy Data')
     ax.set_ylabel('Balanced Accuracy')
     ax.spines['right'].set_visible(False)
     ax.spines['top'].set_visible(False)
     ax.tick_params(axis='both', which='both', top=False, right=False)
     ax.yaxis.grid(True)
-    ax.set_xticks(list(part_id2x.values()))  # TODO test
-    ax.set_xticklabels(list(part_id2x.values()))
+    ax.set_xticks([x[0], x[-1]])  # TODO test
+    ax.set_xticklabels([x[0], x[-1]])
     # plot
-    for tr, y in part_id2y.items():
-        x = part_id2x[tr]
-        ax.plot(x, y, label='truncate={}'.format(tr))
+    for reverse, y in r2y.items():
+        ax.plot(x, y, label='reverse={}'.format(reverse))
     #
     plt.legend(frameon=False, loc='lower right')
     plt.tight_layout()
     plt.show()
 
 
-truncate2bas = {tuple(tr): [0.5] for tr in Params.truncate_list}
-truncate2num_windows = {tuple(tr): [0] for tr in Params.truncate_list}
-for param2vals in list_all_param2vals(Params, update_d={'param_name': 'test', 'job_name': 'test'}):
+# params
+param2vals = list_all_param2vals(Params, update_d={'param_name': 'test', 'job_name': 'test'})[0]
+params = ObjectView(param2vals)
+for k, v in sorted(params.__dict__.items()):
+    print(k, v)
 
-    # params
-    params = ObjectView(param2vals)
-    for k, v in sorted(params.__dict__.items()):
-        print(k, v)
+# toy data
+toy_data = ToyData(params)
+probes = toy_data.x_words
+probe2cat = toy_data.num_cats2xw2cat[NUM_CATS]
+cats = set(probe2cat.values())
 
-    truncate = tuple(params.truncate_list)
-
-    # toy data
-    toy_data = ToyData(params)
-    probes = toy_data.probes
-    probe2cat = toy_data.num_cats2probe2cat[NUM_CATS]
-    cats = set(probe2cat.values())
-
+reverse_list = [False, True]
+reverse2bas = {reverse: [0.5] for reverse in reverse_list}
+reverse2num_windows = {reverse: [0] for reverse in reverse_list}
+for reverse in reverse_list:
     probe2act = {p: np.zeros(toy_data.num_vocab) for p in probes}
     xi = 0
-    for rows in np.vsplit(np.asarray(toy_data.word_sequences_mat), NUMS_SPLITS):
+    seq_mat = toy_data.word_sequences_mat if not reverse else toy_data.word_sequences_mat[::-1]
+    for rows in np.vsplit(np.asarray(seq_mat), NUMS_SPLITS):
         ba = calc_ba_from_sequences_chunk(rows, probe2act)
         xi += len(rows)
-        truncate2bas[truncate].append(ba)
-        truncate2num_windows[truncate].append(xi)
+        reverse2bas[reverse].append(ba)
+        reverse2num_windows[reverse].append(xi)
         print('xi={} ba={:.2f}'.format(xi, ba))
     print('------------------------------------------------------')
 
 
 # plot
-plot_ba_trajs(truncate2bas, truncate2num_windows,
-              title='Does ba rise faster in toy data partition1?\n'
-                    'model=bag-of-words\n'
-                    'truncate_type={}'.format(TRUNCATE_TYPE))
+plot_ba_trajs(reverse2bas, reverse2num_windows[True],
+              title='model=bag-of-words\n'
+                    'mutation_prob={}\ntemplate_noise={}'.format(
+                  params.mutation_prob, params.template_noise))

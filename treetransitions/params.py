@@ -10,15 +10,15 @@ class Params:
     reverse = [True, False]
     num_seqs = [1 * 10 ** 6]
     num_contexts = [1024]
-    mutation_prob = [0.2, 0.1, 0.01]
-    template_noise = [0.0]  # higher template noise -> higher ba due to more cues being expanded (branching)
+    mutation_prob = [0.05]
+    template_noise = [0.5]  # higher template noise -> higher ba due to more cues being expanded (branching)
     # probes
     min_num_cats = [32]
     num_probes = [1024]
     num_cats_list = [[32, 64, 128, 256, 512]]  # only makes sense to use bigger than min_num_cats
     # rnn
-    num_iterations = [20]
-    num_partitions = [1]
+    num_iterations = [1]
+    num_partitions = [8]
     rnn_type = ['srn']
     bptt = [1]
     mb_size = [64]

@@ -114,14 +114,14 @@ class ToyData:
         for n, yw in enumerate(self.y_words):
             template = -np.ones(self.params.min_num_cats)
             template *= [1 if binom else -1 for binom in np.random.binomial(
-                n=1, p=1 - self.params.template_noise, size=len(template))]  # adding noise
+                n=1, p=1 - self.params.template_noise, size=len(template))]  # add noise
             cat_id = self.yw2cat[yw]
             template[cat_id] = 1  # do this after adding noise
             #
             res.append(template)
         return np.vstack(res)
 
-    def make_legals_mats(self, template_mat):  # TODO test
+    def make_legals_mats(self, template_mat):
         expanded = template_mat
         for _ in range(self.num_expansions + 1):  # + 1 to capture first (undifferentiated) template
             yield self.complete_branching(expanded)
@@ -191,7 +191,9 @@ class ToyData:
         num_processes = config.Eval.num_processes
         pool = mp.Pool(processes=num_processes)
         # make sequences
-        num_seqs_in_chunk = self.params.num_seqs // self.num_expansions
+        num_chunks = len(self.legals_mats)
+        print('num legals_mats={}'.format(num_chunks))
+        num_seqs_in_chunk = self.params.num_seqs // num_chunks
         results = [pool.apply_async(
             make_sequences_chunk,
             args=(self.x_words, self.y_words, num_seqs_in_chunk, legals_mat)) for legals_mat in self.legals_mats]

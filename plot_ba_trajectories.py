@@ -15,11 +15,13 @@ X_STEP = 5
 YLIMs = None
 FIGSIZE = (10, 10)
 TITLE_FONTSIZE = 10
-PLOT_NUM_CATS_LIST = [2, 4, 8, 16, 32]
+PLOT_NUM_CATS_LIST = [32, 64, 128, 256, 512]
 
 
 default_dict = MatchParams.__dict__.copy()
-MatchParams.truncate_control = [False]
+MatchParams.mutation_prob = [0.01]
+MatchParams.num_iterations = [5]
+MatchParams.num_partitions = [4]
 
 
 def gen_param_ps(param2requested, param2default):
