@@ -12,7 +12,7 @@ class Params:
     num_contexts = [1024]
     mutation_prob = [0.05]
     template_noise = [0.5]  # higher template noise -> higher ba due to more cues being expanded (branching)
-    compact_percents = [[0.5, 1.0]]
+    compact_percents = [[0.0, 1.0]]
     # probes
     min_num_cats = [32]
     num_probes = [1024]
