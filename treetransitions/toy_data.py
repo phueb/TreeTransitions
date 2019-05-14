@@ -112,17 +112,17 @@ class ToyData:
         which will be used as input to branching diffusion
         """
         templates = []
-        print('Making template_mat...')
+        print('Making legals_mat...')
         for n, yw in enumerate(self.y_words):
             template = -np.ones(self.params.min_num_cats)
-            template *= [1 if binom else -1 for binom in np.random.binomial(
-                n=1, p=1 - self.params.template_noise, size=len(template))]  # add noise
+            template *= [-1 if binom else 1 for binom in np.random.binomial(
+                n=1, p=self.params.template_noise, size=len(template))]  # add noise
             cat_id = self.yw2cat[yw]
             template[cat_id] = 1  # do this after adding noise
             #
             templates.append(template)
         # branching diffusion
-        res = np.vstack(templates)
+        res = np.vstack(templates)  # template_noise=1 results in template_mat containing all 1s
         for _ in range(self.num_expansions + 1):  # + 1 to capture first (undifferentiated) template
             res = self.complete_branching_diffusion(res)
         return np.vstack(res)
@@ -146,7 +146,7 @@ class ToyData:
             #
             rand_row_ids = np.random.choice(self.params.num_contexts, num_replace_rows, replace=False)
             cols[rand_row_ids] = -1
-            cols[start_diagnostic: end_diagnostic] = diagnostic_block
+            # cols[start_diagnostic: end_diagnostic] = diagnostic_block  # TODO test
         return legals_mat
 
     def plot_legals_mat(self, mat):
@@ -203,7 +203,6 @@ class ToyData:
         pool = mp.Pool(processes=num_processes)
         # make sequences
         num_chunks = self.params.num_partitions
-        print('num num_chunks={}'.format(num_chunks))
         num_seqs_in_chunk = self.params.num_seqs // num_chunks
         results = [pool.apply_async(
             make_sequences_chunk,

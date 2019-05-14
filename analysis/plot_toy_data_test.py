@@ -2,9 +2,12 @@ import numpy as np
 from matplotlib import pyplot as plt
 from scipy.spatial.distance import pdist
 from scipy.cluster.hierarchy import linkage, dendrogram
-from itertools import cycle
 
 from treetransitions.utils import to_corr_mat
+from treetransitions.params import Params, ObjectView
+from treetransitions.toy_data import ToyData
+
+from ludwigcluster.utils import list_all_param2vals
 
 
 def cluster(m, original_row_words=None, original_col_words=None):
@@ -63,52 +66,35 @@ def plot_heatmap(mat, ytick_labels, xtick_labels,
 
 NUM_CATS = 32
 
-NUM_DESCENDANTS = 2
-STOP_MUTATION_LEVEL = 12
-BOTTOM_MUTATION_PROB = 0.00
+Params.num_seqs = [1 * 10 ** 5]
+Params.num_cats_list = [[NUM_CATS]]
+Params.min_num_cats = [NUM_CATS]
+Params.reverse = [False]
 
-NUM_VOCAB = 1024
+param2vals = list_all_param2vals(Params, update_d={'param_name': 'test', 'job_name': 'test'})[0]
+params = ObjectView(param2vals)
+for k, v in sorted(params.__dict__.items()):
+    print(k, v)
 
+# toy data
+toy_data = ToyData(params, max_ba=False)
 
-def make_legals_row(res, end_num):
-    while True:  # keep branching until end_num nodes are created
-        if len(res) >= end_num:
-            return res
-        #
-        rep = np.repeat(res, NUM_DESCENDANTS)
-        res = rep * [1 if binom else -1
-                     for binom in np.random.binomial(n=1, p=1 - BOTTOM_MUTATION_PROB, size=len(rep))]
+for legals_mat in toy_data.legals_mats:
+    # corr_mat
+    corr_mat = to_corr_mat(legals_mat)
 
+    # plot corr_mat
+    clustered_corr_mat = cluster(corr_mat)
+    plot_heatmap(clustered_corr_mat, [], [])
 
-def make_legals_mat():
-    res = np.zeros((NUM_VOCAB, NUM_VOCAB), dtype=np.int)
-    row_id = 0
-    for cat_id in range(NUM_CATS):
-        # nodes_template
-        nodes_template = -np.ones(NUM_CATS)
-        nodes_template[cat_id] = 1
-        # differentiate template (once for each category member)
-        num_members = NUM_VOCAB // NUM_CATS
-        for _ in range(num_members):
-            legals_row = make_legals_row(nodes_template, NUM_VOCAB)
-            res[row_id, :] = legals_row
-            row_id += 1
-    return res
-
-
-# corr_mat
-legals_mat = make_legals_mat()
-corr_mat = to_corr_mat(legals_mat)
-
-# plot corr_mat
-clustered_corr_mat = cluster(corr_mat)
-plot_heatmap(clustered_corr_mat, [], [])
-
-# plot dg - of the CORRELATION MATRIX  - NOT THE RAW DATA MATRIX
-# z = linkage(corr_mat, metric='correlation')
-# fig, ax = plt.subplots(figsize=(40, 10), dpi=200)
-# dendrogram(z, ax=ax)
-# plt.title('Hierarchical Clustering Dendrogram', fontsize=20)
-# plt.xlabel('word ids in vocab')
-# plt.ylabel('distance')
-# plt.show()
+    # plot dg - of the CORRELATION MATRIX  - NOT THE RAW DATA MATRIX
+    # z = linkage(corr_mat, metric='correlation')
+    # fig, ax = plt.subplots(figsize=(20, 10), dpi=200)
+    # dendrogram(z, ax=ax)
+    # plt.title('Hierarchical Clustering of Probes\nreplace_percents={}'.format(
+    #     params.replace_percents), fontsize=20)
+    # plt.xlabel('Probes', fontsize=20)
+    # plt.ylabel('Distance', fontsize=20)
+    # ax.set_xticklabels([])
+    # ax.set_xticks([])
+    # plt.show()

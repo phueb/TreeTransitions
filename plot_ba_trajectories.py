@@ -11,7 +11,7 @@ from treetransitions.params import Params as MatchParams
 
 VERBOSE = True
 
-X_STEP = 5
+X_STEP = 1
 YLIMs = None
 FIGSIZE = (10, 10)
 TITLE_FONTSIZE = 10
@@ -19,7 +19,7 @@ PLOT_NUM_CATS_LIST = [32, 64, 128, 256, 512]
 
 
 default_dict = MatchParams.__dict__.copy()
-MatchParams.mutation_prob = [0.05]
+MatchParams.mutation_prob = [0.00]
 
 
 def gen_param_ps(param2requested, param2default):
@@ -93,11 +93,14 @@ def plot_ba_trajs(d1, d2, title):
                 label='num_cats={}'.format(num_cats))
         if d2 is not None:
             ax.axhline(y=d2[num_cats], linestyle='dashed', color=c)
-    plt.legend(loc='upper left', frameon=False)
+    plt.legend(loc='best', frameon=False)
     #
     ax.set_xticks(xticks)
     ax.set_xticklabels(xticks)
-    ax.xaxis.grid(True)
+
+    print(xticks)
+    ax.set_xlim([xticks[0], xticks[-1]])
+    # ax.xaxis.grid(True)
     #
     plt.tight_layout()
     plt.show()

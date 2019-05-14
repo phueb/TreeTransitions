@@ -16,12 +16,12 @@ NUMS_SPLITS = 8
 
 NUM_CATS = 32
 
-Params.num_seqs = [1 * 10 ** 5]
+Params.num_seqs = [1 * 10 ** 4]
 Params.num_cats_list = [[NUM_CATS]]
 Params.min_num_cats = [NUM_CATS]
 Params.reverse = [False]
+Params.replace_percents = [[0.1, 0.0]]
 Params.mutation_prob = [0.05]
-Params.template_noise = [0.5]
 
 
 def calc_ba_from_sequences_chunk(seqs_chunk, d):
@@ -50,6 +50,7 @@ def plot_ba_trajs(r2y, x, title):
     ax.yaxis.grid(True)
     ax.set_xticks([x[0], x[-1]])
     ax.set_xticklabels([x[0], x[-1]])
+    ax.set_ylim([0, 1.0])
     # plot
     for reverse, y in r2y.items():
         ax.plot(x, y, label='reverse={}'.format(reverse))
