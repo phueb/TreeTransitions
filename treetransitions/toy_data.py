@@ -145,7 +145,7 @@ class ToyData:
             old[:num_replace_rows, :] = -1
             cols[:int(n * num_members)] = old
 
-            # TODO use num_replace_rows
+            # TODO don't just replace upper triang
 
         return legals_mat
 

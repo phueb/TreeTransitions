@@ -44,10 +44,6 @@ if __name__ == '__main__':
     namespace = parser.parse_args()
     if namespace.debug:
         config.Eval.debug = True
-
-    # TODO
-    run_on_host()
-
     #
     if namespace.local:
         run_on_host()

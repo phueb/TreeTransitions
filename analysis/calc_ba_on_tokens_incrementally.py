@@ -21,7 +21,7 @@ Params.num_cats_list = [[NUM_CATS]]
 Params.min_num_cats = [NUM_CATS]
 Params.reverse = [False]
 Params.mutation_prob = [0.05]
-Params.template_noise = [0.6]
+Params.template_noise = [0.5]
 
 
 def calc_ba_from_sequences_chunk(seqs_chunk, d):
