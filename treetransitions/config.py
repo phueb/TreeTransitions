@@ -19,8 +19,8 @@ class Eval:
     debug = False
     calc_pp = False
     num_processes = 4
-    plot_tree = True
-    plot_legals_mat = True
+    plot_tree = False
+    plot_legals_mat = False
 
 
 class Graph:
