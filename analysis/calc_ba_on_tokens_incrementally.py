@@ -48,7 +48,7 @@ def plot_ba_trajs(r2y, x, title):
     ax.spines['top'].set_visible(False)
     ax.tick_params(axis='both', which='both', top=False, right=False)
     ax.yaxis.grid(True)
-    ax.set_xticks([x[0], x[-1]])  # TODO test
+    ax.set_xticks([x[0], x[-1]])
     ax.set_xticklabels([x[0], x[-1]])
     # plot
     for reverse, y in r2y.items():

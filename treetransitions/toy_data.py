@@ -60,7 +60,7 @@ class ToyData:
         self.num_expansions = int(np.log2(self.params.num_probes) - np.log2(self.params.min_num_cats))
         self.legals_mat = self.make_legals_mat()
         self.legals_mats = [self.make_compact(self.legals_mat.copy(), percent)
-                            for percent in self.make_compact_percent_linspace()]
+                            for percent in self.make_replace_percent_linspace()]
         if self.params.reverse:
             self.legals_mats = self.legals_mats[::-1]
         self.full_legals_mat = self.legals_mats[-1]
@@ -127,26 +127,26 @@ class ToyData:
             res = self.complete_branching_diffusion(res)
         return np.vstack(res)
 
-    def make_compact_percent_linspace(self):
-        min_p, max_p = self.params.compact_percents
+    def make_replace_percent_linspace(self):
+        min_p, max_p = self.params.replace_percents
         res = np.linspace(min_p, max_p, self.params.num_partitions)
-        print('compact_percent_linspace:')
+        print('replace_percent_linspace:')
         print(res)
         return res
 
-    def make_compact(self, legals_mat, compact_perc):
-        replace_perc = 1 - compact_perc
+    def make_compact(self, legals_mat, replace_perc):
         num_replace_rows = int(legals_mat.shape[1] * replace_perc)
         print('Replacing {} rows in legals_mat category columns with -1s'.format(num_replace_rows))
         #
         num_members = self.params.num_probes // self.params.min_num_cats
         for n, cols in enumerate(np.hsplit(legals_mat, self.params.min_num_cats)):
-            old = cols[:int(n * num_members)]
-            old[:num_replace_rows, :] = -1
-            cols[:int(n * num_members)] = old
-
-            # TODO don't just replace upper triang
-
+            start_diagnostic = n * num_members
+            end_diagnostic = start_diagnostic + num_members
+            diagnostic_block = cols[start_diagnostic: end_diagnostic].copy()  # copy is required
+            #
+            rand_row_ids = np.random.choice(self.params.num_contexts, num_replace_rows, replace=False)
+            cols[rand_row_ids] = -1
+            cols[start_diagnostic: end_diagnostic] = diagnostic_block
         return legals_mat
 
     def plot_legals_mat(self, mat):
