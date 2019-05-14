@@ -60,7 +60,7 @@ class ToyData:
         self.num_expansions = int(np.log2(self.params.num_probes) - np.log2(self.params.min_num_cats))
         self.legals_mat = self.make_legals_mat()
         self.legals_mats = [self.make_compact(self.legals_mat, percent)
-                            for percent in self.params.compact_perc_list]  # TODO compact_perc_list
+                            for percent in self.make_compact_percent_linspace()]  # TODO compact_perc_list
         if self.params.reverse:
             self.legals_mats = self.legals_mats[::-1]
         self.full_legals_mat = self.legals_mats[-1]
@@ -127,12 +127,21 @@ class ToyData:
             res = self.complete_branching_diffusion(res)
         return np.vstack(res)
 
-    def make_compact(self, legals_mat, compact_perc):  # TODO compact_perc
-        res = []
-        for rows in np.vsplit(legals_mat, self.params.min_num_cats):
+    def make_compact_percent_linspace(self):
+        min_p, max_p = self.params.compact_percents
+        res = np.linspace(min_p, max_p, self.params.num_partitions)
+        print('compact_percent_linspace:')
+        print(res)
+        return res
 
+    def make_compact(self, legals_mat, compact_perc):
+        num_members = self.params.num_probes // self.params.min_num_cats
+        for n, cols in enumerate(np.hsplit(legals_mat, self.params.min_num_cats)):
+            cols[:int(n * num_members)] = -1
 
+            # TODO can't just make leglas_mat smaller -  indices would be off
 
+        return legals_mat
 
     def plot_legals_mat(self, mat):
         fig, ax = plt.subplots(figsize=(10, 10), dpi=None)
@@ -157,19 +166,6 @@ class ToyData:
                  ax.yaxis.get_ticklines())
         plt.setp(lines, visible=False)
         plt.show()
-
-    def branching_diffusion(self, template_mat):
-        """
-        for a given context_word, create binary vector representing which probes it is allowed to follow
-        """
-        num_descendants = 2
-        res = []
-        for row in template_mat:
-            rep = np.repeat(row, num_descendants)
-            expanded = rep * [1 if b else -1
-                              for b in np.random.binomial(n=1, p=1-self.params.mutation_prob, size=len(rep))]
-            res.append(expanded)
-        return np.vstack(res)
 
     def complete_branching_diffusion(self, template_mat):
         num_descendants = 2
@@ -200,8 +196,8 @@ class ToyData:
         num_processes = config.Eval.num_processes
         pool = mp.Pool(processes=num_processes)
         # make sequences
-        num_chunks = len(self.legals_mats)
-        print('num legals_mats={}'.format(num_chunks))
+        num_chunks = self.params.num_partitions
+        print('num num_chunks={}'.format(num_chunks))
         num_seqs_in_chunk = self.params.num_seqs // num_chunks
         results = [pool.apply_async(
             make_sequences_chunk,
