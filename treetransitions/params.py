@@ -22,7 +22,7 @@ class Params:
     rnn_type = ['srn']
     bptt = [1]
     mb_size = [64]
-    learning_rate = [0.9]  # 0.03-adagrad 0.3-sgd
+    learning_rate = [1.8]  # 0.03-adagrad 0.3-sgd
     num_hiddens = [128]
     optimization = ['sgd']  # don't forget to change learning rate
     # eval
