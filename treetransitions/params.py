@@ -7,11 +7,11 @@ class ObjectView(object):
 
 class Params:
     # input
-    reverse = [True, False]
-    num_seqs = [1 * 10 ** 6]
+    reverse = [False, True]
+    num_seqs = [1 * 10 ** 5]
     num_contexts = [1024]
-    mutation_prob = [0.05]
-    template_noise = [0.5]  # higher template noise -> higher ba due to more cues being expanded (branching)
+    mutation_prob = [0.1]
+    template_noise = [0.0]  # higher template noise -> higher ba due to more cues being expanded (branching)
     # probes
     min_num_cats = [32]
     num_probes = [1024]
@@ -22,8 +22,8 @@ class Params:
     rnn_type = ['srn']
     bptt = [1]
     mb_size = [64]
-    learning_rate = [1.8]  # 0.03-adagrad 0.3-sgd
+    learning_rate = [0.03]  # 0.03-adagrad 0.3-sgd
     num_hiddens = [128]
-    optimization = ['sgd']  # don't forget to change learning rate
+    optimization = ['adagrad']  # don't forget to change learning rate
     # eval
     w = ['embeds']

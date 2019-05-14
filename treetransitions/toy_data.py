@@ -114,8 +114,8 @@ class ToyData:
         print('Making template_mat...')
         for n, yw in enumerate(self.y_words):
             template = -np.ones(self.params.min_num_cats)
-            template *= [1 if binom else -1 for binom in np.random.binomial(
-                n=1, p=1 - self.params.template_noise, size=len(template))]  # add noise
+            template *= [-1 if binom else 1 for binom in np.random.binomial(
+                n=1, p=self.params.template_noise, size=len(template))]  # add noise
             cat_id = self.yw2cat[yw]
             template[cat_id] = 1  # do this after adding noise
             #
@@ -158,10 +158,15 @@ class ToyData:
         """
         num_descendants = 2
         res = []
+
         for row in template_mat:
             rep = np.repeat(row, num_descendants)
+            template_row = rep.copy()
             expanded = rep * [1 if b else -1
                               for b in np.random.binomial(n=1, p=1-self.params.mutation_prob, size=len(rep))]
+            # undo mutations where initial_template_mat is -1
+            expanded = np.where(template_row == 1, expanded, template_row)  # TODO test
+            # collect
             res.append(expanded)
         return np.vstack(res)
 
