@@ -5,7 +5,6 @@ from datetime import datetime
 
 from treetransitions import config
 from treetransitions.jobs import main_job
-from treetransitions.jobs import main_job_with_incremental_mutation_prob
 from treetransitions.params import Params
 
 hostname = socket.gethostname()
@@ -19,7 +18,7 @@ def run_on_cluster():
     with p.open('rb') as f:
         param2val_chunk = pickle.load(f)
     for param2val in param2val_chunk:
-        main_job_with_incremental_mutation_prob(param2val)
+        main_job(param2val)
     #
     print('Finished all TreeTransitions jobs at {}.'.format(datetime.now()))
     print()
@@ -34,9 +33,8 @@ def run_on_host():
     for param2val in list_all_param2vals(Params, update_d={'param_name': 'test', 'job_name': 'test'}):
         if config.Eval.debug:
             param2val['num_seqs'] = 1 * 10 ** 6
-            param2val['num_partitions'] = 1
             print('Debugging - num_seqs={}'.format(param2val['num_seqs']))
-        main_job_with_incremental_mutation_prob(param2val)
+        main_job(param2val)
 
 
 if __name__ == '__main__':
@@ -47,6 +45,10 @@ if __name__ == '__main__':
     if namespace.debug:
         config.Eval.debug = True
     #
+
+    # TODO remove
+    run_on_host()
+
     if namespace.local:
         run_on_host()
     else:

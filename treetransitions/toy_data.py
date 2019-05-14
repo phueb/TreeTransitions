@@ -54,13 +54,13 @@ def make_sequences_chunk(x_words, y_words, chunk_id, xw_2yws, xw2sorted_yws, num
 class ToyData:
     def __init__(self, params, max_ba=True, make_tokens=True):
         self.params = params
-        self.x_words = self.make_vocab(1)  # probes
-        self.y_words = self.make_vocab(0)  # non-probes (or context words)
+        self.x_words = self.make_x_words()  # probes
+        self.y_words = self.make_y_words()  # non-probes (or context words)
         self.num_yws = len(self.y_words)
         self.num_xws = len(self.x_words)
         #
         self.vocab = list(set(self.y_words + self.x_words))
-        self.num_vocab = len(self.vocab)
+        self.num_vocab = len(self.vocab)  # used by rnn
         self.word2id = {word: n for n, word in enumerate(self.vocab)}
         #
         self.yw2node0 = self.make_yw2node0()
@@ -84,6 +84,9 @@ class ToyData:
                                      for num_cats in params.num_cats_list}
         for num_cats in self.params.num_cats_list:
             self.plot_tree(num_cats) if config.Eval.plot_tree else None
+        # pot legals_mat
+        if config.Eval.plot_legals_mat:
+            self.plot_legals_mat(self.legals_mat)
         #
         if make_tokens:
             self.word_sequences_mat = self.make_sequences_mat()
@@ -92,9 +95,12 @@ class ToyData:
             self.id_sequences_mat = np.asarray([[self.word2id[w] for w in seq]
                                                 for seq in self.word_sequences_mat]).reshape((self.num_seqs, -1))
 
-    def make_vocab(self, vocab_id):
-        num_vocab = self.params.num_descendants ** self.params.num_levels
-        vocab = ['w{}'.format(i) for i in np.arange(num_vocab * vocab_id, num_vocab * (vocab_id + 1))]
+    def make_y_words(self):
+        vocab = ['y{}'.format(i) for i in np.arange(self.params.num_contexts)]
+        return vocab
+
+    def make_x_words(self):
+        vocab = ['x{}'.format(i) for i in np.arange(self.params.num_probes)]
         return vocab
 
     def make_yw2node0(self):
@@ -103,6 +109,8 @@ class ToyData:
             node0 = -1 if np.random.binomial(n=1, p=0.5) else 1
             res[yw] = node0
         return res
+
+    # /////////////////////////////////////////////////////////////// legals
 
     def make_legals_mat(self):
         """
@@ -121,6 +129,30 @@ class ToyData:
             yws = [yw for yw, val in zip(self.y_words, col) if val == self.yw2node0[yw]]  # node0 is required
             res[xw] = yws
         return res
+
+    def plot_legals_mat(self, mat):
+        fig, ax = plt.subplots(figsize=(10, 10), dpi=None)
+        # heatmap
+        print('Plotting heatmap...')
+        plt.title('mutation_prob={}'.format(
+            self.params.mutation_prob))
+        ax.imshow(mat,
+                  aspect='equal',
+                  cmap=plt.get_cmap('jet'),
+                  interpolation='nearest')
+        # xticks
+        num_cols = len(mat.T)
+        ax.set_xticks(np.arange(num_cols))
+        ax.xaxis.set_ticklabels([])
+        # yticks
+        num_rows = len(mat)
+        ax.set_yticks(np.arange(num_rows))
+        ax.yaxis.set_ticklabels([])
+        # remove ticklines
+        lines = (ax.xaxis.get_ticklines() +
+                 ax.yaxis.get_ticklines())
+        plt.setp(lines, visible=False)
+        plt.show()
 
     # ///////////////////////////////////////////////////////////////////////// probes
 
@@ -149,13 +181,13 @@ class ToyData:
             res1.append(p)
 
     def make_probes(self):
-        # find cluster (identified by idx1 and idx2) with parent_count nodes beneath it
+        # find cluster (identified by idx1 and idx2) with num_probes nodes beneath it
         for row in self.z:
             idx1, idx2, dist, count = row
-            if count == self.params.parent_count:
+            if count == self.params.num_probes:
                 break
         else:
-            raise RuntimeError('Did not find any cluster with count={}'.format(self.params.parent_count))
+            raise RuntimeError('Did not find any cluster with count={}'.format(self.params.num_probes))
         # get probes - tree structure is preserved in order of how probes are retrieved from tree
         res = []
         for idx in [idx1, idx2]:
@@ -166,7 +198,7 @@ class ToyData:
 
     def make_probe2cat(self, num_cats):
         print('Assigning probes to {} categories'.format(num_cats))
-        num_members = self.params.parent_count / num_cats
+        num_members = self.params.num_probes / num_cats
         assert num_members.is_integer()
         num_members = int(num_members)
         #
@@ -217,19 +249,14 @@ class ToyData:
     def sample_from_hierarchical_diffusion(self, node0):
         """the higher the change probability (e),
          the less variance accounted for by higher-up nodes"""
-
-        # TODO
-        assert self.params.mutation_probs[0] == self.params.mutation_probs[1]
-        mutation_prob = self.params.mutation_probs[0]
-
         nodes = [node0]
         for level in range(self.params.num_levels):
             candidate_nodes = nodes * self.params.num_descendants
             s = len(candidate_nodes)
-            mutation_prob = 0 if level >= self.params.stop_mutation_level else mutation_prob
+            mutation_prob = 0 if level >= self.params.stop_mutation_level else self.params.mutation_prob
             nodes = [node if p else -node
                      for node, p in zip(candidate_nodes,
-                                        np.random.binomial(n=2, p=1 - mutation_prob, size=s))]
+                                        np.random.binomial(n=1, p=1 - mutation_prob, size=s))]
         return nodes
 
     def make_sequences_mat(self, num_chunks=32):
@@ -289,13 +316,9 @@ class ToyData:
         for num_cats in self.params.num_cats_list:
             probes = self.probes
             probe2cat = self.num_cats2probe2cat[num_cats]
-            # probe_acts1 = self.legals_mat[[self.word2id1[p] for p in probes], :]
-            # ba1 = calc_ba(cosine_similarity(probe_acts1), probes, probe2cat)
             probe_acts2 = self.legals_mat[:, [self.x_words.index(p) for p in probes]].T
             ba2 = calc_ba(cosine_similarity(probe_acts2), probes, probe2cat)
-            # print('input-data row-wise ba={:.3f}'.format(ba1))
             print('input-data col-wise ba={:.3f}'.format(ba2))
-            print()
             res[num_cats] = ba2
         return res
 
@@ -304,29 +327,11 @@ class ToyData:
         link2color = {}
         for i, i12 in enumerate(self.z[:, :2].astype(int)):
             c1, c2 = (link2color[x] if x > len(self.z)
-                      else probe2color[self.vocab[x.astype(int)]]
+                      else probe2color[self.x_words[x.astype(int)]]
                       for x in i12)
             link2color[i + 1 + len(self.z)] = c1 if c1 == c2 else 'grey'
-        #
-        cmap = self.num_cats2cmap[num_cats]
-        fig, ax = plt.subplots(figsize=(20, 10), dpi=100)
-        dg = dendrogram(self.z, ax=ax, color_threshold=None, link_color_func=lambda i: link2color[i])
-        reordered_vocab = np.asarray(self.vocab)[dg['leaves']]
-        ax.set_xticklabels([w if w in self.probes else '' for w in reordered_vocab], fontsize=6)
-        # assign x tick label color
-        probe2_cat = self.num_cats2probe2cat[num_cats]
-        colors = [to_hex(cmap(i)) for i in range(num_cats)]
-        for n, w in enumerate(self.vocab):
-            try:
-                cat = probe2_cat[w]
-            except KeyError:
-                continue
-            else:
-                color = colors[cat]
-                ax.get_xticklabels()[n].set_color(color)  # TODO doesn't work
+        # plot
+        fig, ax = plt.subplots(figsize=(10, 5), dpi=None)
+        dendrogram(self.z, ax=ax, color_threshold=None, link_color_func=lambda i: link2color[i])
+        ax.set_xticklabels([])
         plt.show()
-        #
-        # clustered_corr_mat = corr_mat[dg['leaves'], :]
-        # clustered_corr_mat = clustered_corr_mat[:, dg['leaves']]
-        # plot_heatmap(clustered_corr_mat, [], [], dpi=None)
-        # plot_heatmap(cluster(data_mat), [], [], dpi=None)

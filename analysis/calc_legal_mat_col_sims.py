@@ -51,7 +51,7 @@ for param2vals in list_all_param2vals(Params, update_d={'param_name': 'test', 'j
         print(k, v)
 
     # toy data
-    params.parent_count = params.num_descendants ** params.num_levels
+    params.num_probes = params.num_descendants ** params.num_levels
     toy_data = ToyData(params, max_ba=False, make_tokens=False)
 
     # calc sim between legals_mat cols corresponding to different categories

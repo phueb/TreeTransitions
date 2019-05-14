@@ -22,7 +22,7 @@ def main_job(param2val):
         print('{}={}'.format(k, v))
     print()
 
-    toy_data = ToyData(params, max_ba=False if config.Eval.debug else True)
+    toy_data = ToyData(params, max_ba=False)
 
     # train loop
     srn = RNN(toy_data.num_vocab, params)
@@ -56,74 +56,6 @@ def main_job(param2val):
             sys.stdout.flush()
             # train
             srn.train_partition(part_id_seqs, verbose=False)  # a seq is a window (e.g. a bi-gram)
-
-    #  save results to disk
-    if not results_p.parent.exists():
-        results_p.parent.mkdir(parents=True)
-    traj_df = pd.DataFrame(num_cats2bas)
-    with results_p.open('w') as f:
-        traj_df.to_csv(f, index=False)
-
-    # write param2val to shared drive
-    param2val_p = config.RemoteDirs.runs / param2val['param_name'] / 'param2val.yaml'
-    if not param2val_p.exists():
-        param2val['job_name'] = None
-        with param2val_p.open('w', encoding='utf8') as f:
-            yaml.dump(param2val, f, default_flow_style=False, allow_unicode=True)
-
-
-def main_job_with_incremental_mutation_prob(param2val):
-    # check if host is down - do this before any computation
-    results_p = config.RemoteDirs.runs / param2val['param_name'] / param2val['job_name'] / 'results.csv'
-    assert config.RemoteDirs.runs.exists()    # this throws error if host is down
-
-    # params
-    params = ObjectView(param2val.copy())
-    for k, v in param2val.items():
-        print('{}={}'.format(k, v))
-    print()
-
-    num_cats2bas = {num_cats: [] for num_cats in params.num_cats_list}
-
-    for mutation_prob in params.mutation_probs:
-
-        params.mutation_prob = mutation_prob
-        params.num_seqs = params.num_seqs // 2
-        toy_data = ToyData(params, max_ba=False if config.Eval.debug else True)
-
-        # TODO all the probes are different - do not create 2 toy data objects
-
-        # train loop
-        srn = RNN(toy_data.num_vocab, params)
-        for part_id, part_id_seqs in enumerate(toy_data.gen_part_id_seqs()):
-            print('num part_id_seqs in partition={}'.format(len(part_id_seqs)))
-            # perplexity
-            pp = srn.calc_seqs_pp(part_id_seqs) if config.Eval.calc_pp else 0
-            # iterations
-            for iteration in range(params.num_iterations):
-                # ba
-                for num_cats in params.num_cats_list:
-                    probes = toy_data.probes
-                    probe2cat = toy_data.num_cats2probe2cat[num_cats]
-                    #
-                    if params.w == 'embeds':
-                        wx = srn.model.wx.weight.detach().cpu().numpy()
-                        p_acts = np.asarray([wx[toy_data.word2id[p], :] for p in probes])
-                    elif params.w == 'logits':
-                        x = np.asarray([[toy_data.word2id[p]] for p in probes])
-                        p_acts = srn.calc_logits(x)
-                    else:
-                        raise AttributeError('Invalid arg to "params.y".')
-                    ba = calc_ba(cosine_similarity(p_acts), probes, probe2cat)
-                    num_cats2bas[num_cats].append(ba)
-                    print('partition={:>2}/{:>2} | ba={:.3f} num_cats={}'.format(
-                        part_id, params.num_partitions, ba, num_cats))
-                #
-                print('partition={:>2}/{:>2} iteration {}/{} | before-training partition pp={:>5}\n'.format(
-                    part_id, params.num_partitions, iteration, params.num_iterations, pp))
-                sys.stdout.flush()
-                # train
-                srn.train_partition(part_id_seqs, verbose=False)  # a seq is a window (e.g. a bi-gram)
 
     #  save results to disk
     if not results_p.parent.exists():

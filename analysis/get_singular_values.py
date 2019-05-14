@@ -23,7 +23,7 @@ BINARY = False
 NUM_CATS = 32
 
 params = ObjectView(list_all_param2vals(Params, update_d={'param_name': 'test', 'job_name': 'test'})[0])
-params.parent_count = 1024
+params.num_probes = 1024
 params.num_seqs = 2 * 10 ** 6
 params.num_cats_list = [NUM_CATS]
 params.truncate_num_cats = NUM_CATS
