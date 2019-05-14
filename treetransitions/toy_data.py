@@ -58,8 +58,9 @@ class ToyData:
         self.yw2cat = self.make_yw2cat()
         #
         self.num_expansions = int(np.log2(self.params.num_probes) - np.log2(self.params.min_num_cats))
-        self.template_mat = self.make_template_mat()
-        self.legals_mats = list(self.make_legals_mats(self.template_mat))
+        self.legals_mat = self.make_legals_mat()
+        self.legals_mats = [self.make_compact(self.legals_mat, percent)
+                            for percent in self.params.compact_perc_list]  # TODO compact_perc_list
         if self.params.reverse:
             self.legals_mats = self.legals_mats[::-1]
         self.full_legals_mat = self.legals_mats[-1]
@@ -105,12 +106,12 @@ class ToyData:
 
     # /////////////////////////////////////////////////////////////// legals
 
-    def make_template_mat(self):
+    def make_legals_mat(self):
         """
         make a binary vector for each word (same for category members)
         which will be used as input to branching diffusion
         """
-        res = []
+        templates = []
         print('Making template_mat...')
         for n, yw in enumerate(self.y_words):
             template = -np.ones(self.params.min_num_cats)
@@ -119,14 +120,19 @@ class ToyData:
             cat_id = self.yw2cat[yw]
             template[cat_id] = 1  # do this after adding noise
             #
-            res.append(template)
+            templates.append(template)
+        # branching diffusion
+        res = np.vstack(templates)
+        for _ in range(self.num_expansions + 1):  # + 1 to capture first (undifferentiated) template
+            res = self.complete_branching_diffusion(res)
         return np.vstack(res)
 
-    def make_legals_mats(self, template_mat):
-        expanded = template_mat
-        for _ in range(self.num_expansions + 1):  # + 1 to capture first (undifferentiated) template
-            yield self.complete_branching(expanded)
-            expanded = self.branching_diffusion(expanded)
+    def make_compact(self, legals_mat, compact_perc):  # TODO compact_perc
+        res = []
+        for rows in np.vsplit(legals_mat, self.params.min_num_cats):
+
+
+
 
     def plot_legals_mat(self, mat):
         fig, ax = plt.subplots(figsize=(10, 10), dpi=None)
@@ -165,14 +171,16 @@ class ToyData:
             res.append(expanded)
         return np.vstack(res)
 
-    def complete_branching(self, template_mat):
+    def complete_branching_diffusion(self, template_mat):
         num_descendants = 2
         res = []
         for row in template_mat:
             while True:
                 if len(row) >= self.params.num_probes:
                     break
-                row = np.repeat(row, num_descendants)  # no mutation
+                row = np.repeat(row, num_descendants)
+                row = row * [1 if b else -1
+                             for b in np.random.binomial(n=1, p=1 - self.params.mutation_prob, size=len(row))]
             res.append(row)
         return np.vstack(res)
 
