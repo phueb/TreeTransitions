@@ -39,6 +39,7 @@ each row contains a vector sampled from hierarchical process.
 each column (x-word) represents which y_words are allowed to follow x_word
 """
 
+
 class ToyData:
     def __init__(self, params, max_ba=True, make_tokens=True):
         self.params = params
@@ -60,7 +61,7 @@ class ToyData:
         self.template_mat = self.make_template_mat()
         self.legals_mats = list(self.make_legals_mats(self.template_mat))
         if self.params.reverse:
-            self.legals_mats = self.legals_mats[::-1]  # TODO test
+            self.legals_mats = self.legals_mats[::-1]
         self.full_legals_mat = self.legals_mats[-1]
         # ba
         self.num_cats2max_ba = self.make_num_cats2max_ba() if max_ba else None

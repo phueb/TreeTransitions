@@ -19,9 +19,7 @@ PLOT_NUM_CATS_LIST = [32, 64, 128, 256, 512]
 
 
 default_dict = MatchParams.__dict__.copy()
-MatchParams.mutation_prob = [0.01]
-MatchParams.num_iterations = [5]
-MatchParams.num_partitions = [4]
+MatchParams.mutation_prob = [0.05]
 
 
 def gen_param_ps(param2requested, param2default):
