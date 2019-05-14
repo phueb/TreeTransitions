@@ -7,10 +7,11 @@ class ObjectView(object):
 
 class Params:
     # input
+    reverse = [True, False]
     num_seqs = [1 * 10 ** 6]
     num_contexts = [1024]
-    mutation_prob = [0.1, 0.01]
-    template_noise = [0.1, 0.3]  # higher template noise -> higher ba due to more cues being expanded (branching)
+    mutation_prob = [0.2, 0.1, 0.01]
+    template_noise = [0.0]  # higher template noise -> higher ba due to more cues being expanded (branching)
     # probes
     min_num_cats = [32]
     num_probes = [1024]

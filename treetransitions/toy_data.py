@@ -59,6 +59,8 @@ class ToyData:
         self.num_expansions = int(np.log2(self.params.num_probes) - np.log2(self.params.min_num_cats))
         self.template_mat = self.make_template_mat()
         self.legals_mats = list(self.make_legals_mats(self.template_mat))
+        if self.params.reverse:
+            self.legals_mats = self.legals_mats[::-1]  # TODO test
         self.full_legals_mat = self.legals_mats[-1]
         # ba
         self.num_cats2max_ba = self.make_num_cats2max_ba() if max_ba else None
@@ -121,9 +123,9 @@ class ToyData:
 
     def make_legals_mats(self, template_mat):  # TODO test
         expanded = template_mat
-        for _ in range(self.num_expansions):
-            expanded = self.branching_diffusion(expanded)
+        for _ in range(self.num_expansions + 1):  # + 1 to capture first (undifferentiated) template
             yield self.complete_branching(expanded)
+            expanded = self.branching_diffusion(expanded)
 
     def plot_legals_mat(self, mat):
         fig, ax = plt.subplots(figsize=(10, 10), dpi=None)
