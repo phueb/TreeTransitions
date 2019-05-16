@@ -16,12 +16,14 @@ NUMS_SPLITS = 4
 
 NUM_CATS = 32
 TRUNCATE_TYPE = 'legals'
+TRUNCATE_CONTROL = True
 
-Params.num_seqs = [2 * 10 ** 6]
+Params.num_seqs = [5 * 10 ** 6]
 Params.num_cats_list = [[NUM_CATS]]
 Params.truncate_num_cats = [NUM_CATS]
 Params.truncate_list = [[0.5, 1.0], [1.0, 1.0]]
 Params.truncate_type = [TRUNCATE_TYPE]
+Params.truncate_control = [TRUNCATE_CONTROL]
 
 
 def calc_ba_from_sequences_chunk(seqs_chunk, d):
@@ -39,20 +41,20 @@ def calc_ba_from_sequences_chunk(seqs_chunk, d):
     return ba
 
 
-def plot_ba_trajs(part_id2y, part_id2x, title):
+def plot_ba_trajs(tr2y, x, title):
     fig, ax = plt.subplots(figsize=FIGSIZE, dpi=None)
     plt.title(title, fontsize=TITLE_FONTSIZE)
-    ax.set_xlabel('Samples from Toy Data')
+    ax.set_xlabel('Location Toy Data')
     ax.set_ylabel('Balanced Accuracy')
     ax.spines['right'].set_visible(False)
     ax.spines['top'].set_visible(False)
     ax.tick_params(axis='both', which='both', top=False, right=False)
     ax.yaxis.grid(True)
-    ax.set_xticks(list(part_id2x.values()))  # TODO test
-    ax.set_xticklabels(list(part_id2x.values()))
+    ax.set_xticks([x[0], x[-1]])
+    ax.set_xticklabels([x[0], x[-1]])
+    ax.set_ylim([0, 1.0])
     # plot
-    for tr, y in part_id2y.items():
-        x = part_id2x[tr]
+    for tr, y in tr2y.items():
         ax.plot(x, y, label='truncate={}'.format(tr))
     #
     plt.legend(frameon=False, loc='lower right')
@@ -72,7 +74,7 @@ for param2vals in list_all_param2vals(Params, update_d={'param_name': 'test', 'j
     truncate = tuple(params.truncate_list)
 
     # toy data
-    toy_data = ToyData(params)
+    toy_data = ToyData(params, max_ba=False)
     probes = toy_data.probes
     probe2cat = toy_data.num_cats2probe2cat[NUM_CATS]
     cats = set(probe2cat.values())
@@ -89,7 +91,7 @@ for param2vals in list_all_param2vals(Params, update_d={'param_name': 'test', 'j
 
 
 # plot
-plot_ba_trajs(truncate2bas, truncate2num_windows,
-              title='Does ba rise faster in toy data partition1?\n'
-                    'model=bag-of-words\n'
-                    'truncate_type={}'.format(TRUNCATE_TYPE))
+plot_ba_trajs(truncate2bas, truncate2num_windows[truncate],
+              title='model=bag-of-words\n'
+                    'truncate_type={} truncate_control={}'.format(
+                  TRUNCATE_TYPE, TRUNCATE_CONTROL))

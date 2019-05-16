@@ -318,7 +318,7 @@ class ToyData:
             probe2cat = self.num_cats2probe2cat[num_cats]
             probe_acts2 = self.legals_mat[:, [self.x_words.index(p) for p in probes]].T
             ba2 = calc_ba(cosine_similarity(probe_acts2), probes, probe2cat)
-            print('input-data col-wise ba={:.3f}'.format(ba2))
+            print('num_cats={} input-data col-wise ba={:.3f}'.format(num_cats, ba2))
             res[num_cats] = ba2
         return res
 

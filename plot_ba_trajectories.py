@@ -16,6 +16,7 @@ YLIMs = None
 FIGSIZE = (10, 10)
 TITLE_FONTSIZE = 10
 PLOT_NUM_CATS_LIST = [2, 4, 8, 16, 32]
+TOLERANCE = 0.10
 
 
 default_dict = MatchParams.__dict__.copy()
@@ -50,13 +51,27 @@ def make_title(param_p):
     return res
 
 
+def correct_artefacts(df):
+    # correct for ba algorithm - it results in negative spikes occasionally
+    for bas in df.values.T:
+        print(bas)
+        last_i = 0.5
+        for n, val in enumerate(bas):
+            if val < (last_i - TOLERANCE):
+                bas[n] = last_i
+            else:
+                last_i = val
+
+    return df
+
+
 def get_results_dfs(param_p):
     results_ps = list(param_p.glob('*num*/results.csv'))
     print('Found {} results files'.format(len(results_ps)))
     dfs = []
     for results_p in results_ps:
         with results_p.open('rb') as f:
-            df = pd.read_csv(f)
+            df = correct_artefacts(pd.read_csv(f))
         dfs.append(df)
     return dfs
 
@@ -79,7 +94,7 @@ def plot_ba_trajs(d1, d2, title):
     ax.spines['top'].set_visible(False)
     ax.tick_params(axis='both', which='both', top=False, right=False)
     ax.yaxis.grid(True)
-    ax.set_ylim([0.5, 1.0])
+    ax.set_ylim([0.5, 1.01])
     # plot
     xticks = None
     num_trajs = len(d1)
@@ -94,7 +109,7 @@ def plot_ba_trajs(d1, d2, title):
                 label='num_cats={}'.format(num_cats))
         if d2 is not None:
             ax.axhline(y=d2[num_cats], linestyle='dashed', color=c)
-    plt.legend(loc='upper left', frameon=False)
+    # plt.legend(loc='best', frameon=False)
     #
     ax.set_xticks(xticks)
     ax.set_xticklabels(xticks)
