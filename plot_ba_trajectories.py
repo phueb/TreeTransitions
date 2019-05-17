@@ -20,7 +20,7 @@ TOLERANCE = 0.1
 
 
 default_dict = MatchParams.__dict__.copy()
-MatchParams.truncate_control = [False]
+MatchParams.truncate_control = [False, True]
 MatchParams.num_cats_list = [[2, 4, 8, 16, 32]]
 
 

@@ -125,26 +125,38 @@ class ToyData:
         res = np.zeros_like(self.untruncated_legals_mat)
         for cat, cat_col_ids in cat2col_ids.items():
             #
-            cat_cols_with_negative_vals = self.untruncated_legals_mat.copy()[:, cat_col_ids]
-            cat_cols = np.clip(cat_cols_with_negative_vals, 0, 1)
-            cat_legal_freqs = cat_cols.sum(axis=1)
-            row_id2cat_freq = {row_id: f for row_id, f in enumerate(cat_legal_freqs)}
-            # truncate
-            nonzero_row_ids = [row_id for row_id in np.arange(self.num_yws) if row_id2cat_freq[row_id] > 0]
-            sorted_nonzero_row_ids = sorted(nonzero_row_ids, key=lambda row_id: row_id2cat_freq[row_id])
-            # if self.params.truncate_control:  # TODO test -  working on singular vals?
-            #     np.random.shuffle(sorted_nonzero_row_ids)
-            num_truncate = int(len(sorted_nonzero_row_ids) * truncate)
-            truncated_row_ids = sorted_nonzero_row_ids[-num_truncate:]
+            nonzero_row_ids = []
+            row_id2cat_freq = {}
+            cat_cols = self.untruncated_legals_mat[:, cat_col_ids]
+            print('category {} num_cols={}'.format(cat, cat_cols.shape[1]))
+            for row_id, row in enumerate(cat_cols):
+                cat_freq = len(np.where(row == 1)[0])
+                if cat_freq > 0:
+                    nonzero_row_ids.append(row_id)
+                    row_id2cat_freq[row_id] = cat_freq
 
-            min_freq = row_id2cat_freq[truncated_row_ids[0]]
-            # assert min_freq == min([row_id2cat_freq[row_id] for row_id in truncated_row_ids])
-            print(min_freq)
-            # populate
+            # truncated_row_ids
+
+            # TODO debug
+            if self.params.truncate_control:
+                sorted_nonzero_row_ids = np.random.permutation(nonzero_row_ids)
+            else:
+                sorted_nonzero_row_ids = sorted(nonzero_row_ids, key=lambda row_id: row_id2cat_freq[row_id])
+
+            num_nonzero = len(sorted_nonzero_row_ids)
+            num_truncate = int(num_nonzero * truncate)
+            truncated_row_ids = sorted_nonzero_row_ids[-num_truncate:]
+            print('num_nonzero={} num_truncated={}'.format(num_nonzero, num_truncate))
+
+            # print(np.mean([row_id2cat_freq[ri] for ri in nonzero_row_ids]),
+            #       np.mean([row_id2cat_freq[ri] for ri in truncated_row_ids]))
+
+            # truncate
+            new_col = [1 if row_id in truncated_row_ids else -1 for row_id in np.arange(self.num_yws)]
             for col_id in cat_col_ids:
                 old_col = self.untruncated_legals_mat.copy()[:, col_id]
-                res[:, col_id] = [1 if row_id2cat_freq[row_id] >= min_freq and val == 1 else -1
-                                  for row_id, val in enumerate(old_col)]
+                res[:, col_id] = [1 if old == new == 1 else -1
+                                  for old, new in zip(old_col, new_col)]
         print('Done')
         print(np.mean(res))
         assert np.count_nonzero(res) == np.size(res)

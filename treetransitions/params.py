@@ -9,9 +9,9 @@ class Params:
     # input
     num_contexts = [1024]
     truncate_type = ['legals']
-    truncate_control = [False]
+    truncate_control = [False, True]
     truncate_num_cats = [32]
-    truncate_list = [[1.0, 1.0]]  # TODO
+    truncate_list = [[0.75, 0.75]]  # TODO
     num_seqs = [10 * 10 ** 6]
     # branching diffusion
     num_descendants = [2]
@@ -22,7 +22,7 @@ class Params:
     num_probes = [1024]  # exact size of single parent cluster
     num_cats_list = [[2, 4, 8, 16, 32]]
     # rnn
-    num_iterations = [40]  # TODO
+    num_iterations = [40]  # TODO can set this to 20 in future with num_partitions=1
     num_partitions = [1]  # TODO
     rnn_type = ['srn']
     mb_size = [64]

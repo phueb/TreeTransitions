@@ -19,9 +19,9 @@ DPI = None
 CLIPPING = True
 
 Params.learning_rate = [0.04]
-Params.mutation_prob = [0.01]
-Params.num_seqs = [5 * 10 ** 6]
-Params.truncate_list = [[0.75, 1.0]]
+Params.mutation_prob = [0.1]
+Params.num_seqs = [1 * 10 ** 6]
+Params.truncate_list = [[0.5, 1.0]]
 Params.num_partitions = [4]
 Params.truncate_num_cats = [32]
 Params.truncate_control = [True]
@@ -91,14 +91,14 @@ for param2val in list_all_param2vals(Params, update_d={'param_name': 'test', 'jo
         print(k, v)
     toy_data = ToyData(params, max_ba=False, make_tokens=True)
 
-    # use legals mat as input to PCA
-    singular_vals = []
-    mat1 = toy_data.untruncated_legals_mat
-    pca1 = PCA(svd_solver='full')  # pca is invariant to transposition
-    pca1.fit(mat1)
-    singular_vals.append(pca1.singular_values_[:PLOT_NUM_SVS])
-    # plot
-    plot_comparison(singular_vals, params)
+    # # use legals mat as input to PCA
+    # singular_vals = []
+    # mat1 = toy_data.untruncated_legals_mat
+    # pca1 = PCA(svd_solver='full')  # pca is invariant to transposition
+    # pca1.fit(mat1)
+    # singular_vals.append(pca1.singular_values_[:PLOT_NUM_SVS])
+    # # plot
+    # plot_comparison(singular_vals, params)
 
     # use in_out correlation mat computed on tokens as input to PCA
     singular_vals = []
@@ -109,11 +109,11 @@ for param2val in list_all_param2vals(Params, update_d={'param_name': 'test', 'jo
         else:
             mat2 = in_out_corr_mat
 
-        num_one_in_mat1 = len(np.where(mat1 == 1)[0])
-        num_one_in_mat2 = np.count_nonzero(mat2)
-        print('num 1s in legals_mat={:,}'.format(num_one_in_mat1))
-        print('num 1s in in_out_corr_mat={:,}'.format(num_one_in_mat2))
-        print('difference={:,}'.format(num_one_in_mat1 - num_one_in_mat2))
+        # num_one_in_mat1 = len(np.where(mat1 == 1)[0])
+        # num_one_in_mat2 = np.count_nonzero(mat2)
+        # print('num 1s in legals_mat={:,}'.format(num_one_in_mat1))
+        # print('num 1s in in_out_corr_mat={:,}'.format(num_one_in_mat2))
+        # print('difference={:,}'.format(num_one_in_mat1 - num_one_in_mat2))
 
         pca2 = PCA(svd_solver='full')  # pca is invariant to transposition
         pca2.fit(mat2)
