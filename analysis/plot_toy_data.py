@@ -1,10 +1,8 @@
 import numpy as np
 from matplotlib import pyplot as plt
-from scipy.spatial.distance import pdist
-from scipy.cluster.hierarchy import linkage, dendrogram
 
 from treetransitions.params import Params, ObjectView
-from treetransitions.utils import to_corr_mat
+from treetransitions.utils import to_corr_mat, cluster
 from treetransitions.toy_data import ToyData
 
 from ludwigcluster.utils import list_all_param2vals
@@ -18,34 +16,6 @@ Params.num_cats_list = [[NUM_CATS]]
 Params.truncate_num_cats = [NUM_CATS]
 Params.truncate_list = [[1.0, 1.0]]
 Params.learning_rate = [0.03]
-
-
-def cluster(m, original_row_words=None, original_col_words=None):
-    print('Clustering...')
-    #
-    lnk0 = linkage(pdist(m))
-    dg0 = dendrogram(lnk0,
-                     ax=None,
-                     color_threshold=-1,
-                     no_labels=True,
-                     no_plot=True)
-    z = m[dg0['leaves'], :]  # reorder rows
-    #
-    lnk1 = linkage(pdist(m.T))
-    dg1 = dendrogram(lnk1,
-                     ax=None,
-                     color_threshold=-1,
-                     no_labels=True,
-                     no_plot=True)
-
-    z = z[:, dg1['leaves']]  # reorder cols
-    #
-    if original_row_words is None and original_col_words is None:
-        return z
-    else:
-        row_labels = np.array(original_row_words)[dg0['leaves']]
-        col_labels = np.array(original_col_words)[dg1['leaves']]
-        return z, row_labels, col_labels
 
 
 def plot_heatmap(mat, ytick_labels, xtick_labels,

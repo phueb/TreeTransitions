@@ -19,10 +19,10 @@ DPI = None
 CLIPPING = True
 
 Params.learning_rate = [0.04]
-Params.mutation_prob = [0.1]
+Params.mutation_prob = [0.01]
 Params.num_seqs = [1 * 10 ** 6]
 Params.truncate_list = [[0.5, 1.0]]
-Params.num_partitions = [4]
+Params.num_partitions = [8]
 Params.truncate_num_cats = [32]
 Params.truncate_control = [True]
 

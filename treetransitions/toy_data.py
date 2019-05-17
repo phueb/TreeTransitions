@@ -6,7 +6,7 @@ from cytoolz import itertoolz
 from matplotlib.colors import to_hex
 from sklearn.metrics.pairwise import cosine_similarity
 
-from treetransitions.utils import to_corr_mat, calc_ba
+from treetransitions.utils import to_corr_mat, calc_ba, cluster
 from treetransitions import config
 
 
@@ -80,8 +80,10 @@ class ToyData:
             self.plot_tree(num_cats) if config.Eval.plot_tree else None
         # pot legals_mat
         if config.Eval.plot_legals_mat:
+            # self.plot_heatmap(cluster(to_corr_mat(self.untruncated_legals_mat)), title='untruncated')
             for legal_mat in self.legals_mats:
-                self.plot_legals_mat(legal_mat)
+                # self.plot_heatmap(legal_mat)
+                self.plot_heatmap(cluster(to_corr_mat(legal_mat)))
         #
         if make_tokens:
             self.word_sequences_mat = self.make_sequences_mat()
@@ -121,53 +123,37 @@ class ToyData:
             cat = probe2cat[p]
             cat2probes[cat].append(p)
             cat2col_ids[cat].append(self.x_words.index(p))
-        #
+        # truncate
         res = np.zeros_like(self.untruncated_legals_mat)
         for cat, cat_col_ids in cat2col_ids.items():
-            #
-            nonzero_row_ids = []
-            row_id2cat_freq = {}
-            cat_cols = self.untruncated_legals_mat[:, cat_col_ids]
-            print('category {} num_cols={}'.format(cat, cat_cols.shape[1]))
-            for row_id, row in enumerate(cat_cols):
-                cat_freq = len(np.where(row == 1)[0])
-                if cat_freq > 0:
-                    nonzero_row_ids.append(row_id)
-                    row_id2cat_freq[row_id] = cat_freq
-
-            # truncated_row_ids
-
-            # TODO debug
+            # truncation control does truncation  and thus controls for smaller number of cues
+            # but does not do the critical manipulation:
+            # introducing idiosyncrasies consistent only WITHIN each category
             if self.params.truncate_control:
-                sorted_nonzero_row_ids = np.random.permutation(nonzero_row_ids)
+                random_row_ids = np.arange(self.num_yws)  # SAME row_ids for each category
             else:
-                sorted_nonzero_row_ids = sorted(nonzero_row_ids, key=lambda row_id: row_id2cat_freq[row_id])
-
-            num_nonzero = len(sorted_nonzero_row_ids)
+                random_row_ids = np.random.permutation(self.num_yws)  # DIFFERENT row_ids for each category
+            #
+            num_nonzero = len(random_row_ids)
             num_truncate = int(num_nonzero * truncate)
-            truncated_row_ids = sorted_nonzero_row_ids[-num_truncate:]
-            print('num_nonzero={} num_truncated={}'.format(num_nonzero, num_truncate))
-
-            # print(np.mean([row_id2cat_freq[ri] for ri in nonzero_row_ids]),
-            #       np.mean([row_id2cat_freq[ri] for ri in truncated_row_ids]))
-
-            # truncate
+            truncated_row_ids = random_row_ids[-num_truncate:]
+            # new legals_mat
             new_col = [1 if row_id in truncated_row_ids else -1 for row_id in np.arange(self.num_yws)]
             for col_id in cat_col_ids:
                 old_col = self.untruncated_legals_mat.copy()[:, col_id]
                 res[:, col_id] = [1 if old == new == 1 else -1
                                   for old, new in zip(old_col, new_col)]
-        print('Done')
-        print(np.mean(res))
+        print('mean of legals_mat={:.2f}'.format(np.mean(res)))
         assert np.count_nonzero(res) == np.size(res)
         return res
 
-    def plot_legals_mat(self, mat):
+    def plot_heatmap(self, mat, title=None):
         fig, ax = plt.subplots(figsize=(10, 10), dpi=None)
         # heatmap
         print('Plotting heatmap...')
-        plt.title('mutation_prob={}'.format(
-            self.params.mutation_prob))
+        if title is None:
+            title = 'mutation_prob={}'.format(self.params.mutation_prob)
+        plt.title(title)
         ax.imshow(mat,
                   aspect='equal',
                   cmap=plt.get_cmap('jet'),

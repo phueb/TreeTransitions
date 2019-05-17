@@ -3,6 +3,8 @@ from functools import partial
 import numpy as np
 from bayes_opt import BayesianOptimization
 from scipy import stats
+from scipy.cluster.hierarchy import linkage, dendrogram
+from scipy.spatial.distance import pdist
 
 
 def calc_kl_divergence(p, q, epsilon=0.00001):
@@ -68,3 +70,31 @@ def to_corr_mat(data_mat):
     zscored = stats.zscore(data_mat, axis=0, ddof=1)
     res = np.matmul(zscored.T, zscored)  # it matters which matrix is transposed
     return res
+
+
+def cluster(m, original_row_words=None, original_col_words=None):
+    print('Clustering...')
+    #
+    lnk0 = linkage(pdist(m))
+    dg0 = dendrogram(lnk0,
+                     ax=None,
+                     color_threshold=-1,
+                     no_labels=True,
+                     no_plot=True)
+    res = m[dg0['leaves'], :]  # reorder rows
+    #
+    lnk1 = linkage(pdist(m.T))
+    dg1 = dendrogram(lnk1,
+                     ax=None,
+                     color_threshold=-1,
+                     no_labels=True,
+                     no_plot=True)
+
+    res = res[:, dg1['leaves']]  # reorder cols
+    #
+    if original_row_words is None and original_col_words is None:
+        return res
+    else:
+        row_labels = np.array(original_row_words)[dg0['leaves']]
+        col_labels = np.array(original_col_words)[dg1['leaves']]
+        return res, row_labels, col_labels
