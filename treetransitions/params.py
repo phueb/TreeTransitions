@@ -11,13 +11,13 @@ class Params:
     truncate_type = ['legals']
     truncate_control = [False]
     truncate_num_cats = [32]
-    truncate_list = [[0.75, 0.75]]
+    truncate_list = [[1.0, 1.0]]
     num_seqs = [10 * 10 ** 6]
     # branching diffusion
     num_descendants = [2]
     num_levels = [10]
-    mutation_prob = [0.01]
-    stop_mutation_level = [100]  # TODO 5 results in 32 categories without any lower level differentiation
+    mutation_prob = [0.1]  # TODO
+    stop_mutation_level = [100]  # TODO test
     # probes
     num_probes = [1024]  # exact size of single parent cluster
     num_cats_list = [[2, 4, 8, 16, 32]]

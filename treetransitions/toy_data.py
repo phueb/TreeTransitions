@@ -63,7 +63,7 @@ class ToyData:
         self.num_vocab = len(self.vocab)  # used by rnn
         self.word2id = {word: n for n, word in enumerate(self.vocab)}
         #
-        self.yw2node0 = self.make_yw2node0()
+        self.yw2node0 = self.make_yw2node0()  # TODO test node is always -1
         self.legals_mat = self.make_legals_mat()
         self.xw2yws = self.make_xw2yws()
         #
@@ -107,6 +107,7 @@ class ToyData:
         res = {}
         for yw in self.y_words:
             node0 = -1 if np.random.binomial(n=1, p=0.5) else 1
+            # node0 = 1    # TODO test
             res[yw] = node0
         return res
 
