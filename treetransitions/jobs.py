@@ -22,7 +22,7 @@ def main_job(param2val):
         print('{}={}'.format(k, v))
     print()
 
-    toy_data = ToyData(params, max_ba=True)
+    toy_data = ToyData(params, max_ba=False)
 
     # train loop
     srn = RNN(toy_data.num_vocab, params)

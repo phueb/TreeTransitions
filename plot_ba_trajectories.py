@@ -16,7 +16,7 @@ YLIMs = None
 FIGSIZE = (10, 10)
 TITLE_FONTSIZE = 10
 PLOT_NUM_CATS_LIST = [2, 4, 8, 16, 32]
-TOLERANCE = 0.10
+TOLERANCE = 0.1
 
 
 default_dict = MatchParams.__dict__.copy()
@@ -54,14 +54,11 @@ def make_title(param_p):
 def correct_artefacts(df):
     # correct for ba algorithm - it results in negative spikes occasionally
     for bas in df.values.T:
-        print(bas)
-        last_i = 0.5
-        for n, val in enumerate(bas):
-            if val < (last_i - TOLERANCE):
-                bas[n] = last_i
-            else:
-                last_i = val
-
+        num_bas = len(bas)
+        for i in range(num_bas - 2):
+            val1, val2, val3 = bas[[i, i+1, i+2]]
+            if (val1 - TOLERANCE) > val2 < (val3 - TOLERANCE):
+                bas[i+1] = np.mean([val1, val3])
     return df
 
 

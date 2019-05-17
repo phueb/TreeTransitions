@@ -11,7 +11,7 @@ class Params:
     truncate_type = ['legals']
     truncate_control = [False]
     truncate_num_cats = [32]
-    truncate_list = [[1.0, 1.0]]
+    truncate_list = [[0.75, 0.75]]
     num_seqs = [10 * 10 ** 6]
     # branching diffusion
     num_descendants = [2]
@@ -26,8 +26,8 @@ class Params:
     num_partitions = [1]  # TODO
     rnn_type = ['srn']
     mb_size = [64]
-    learning_rate = [0.006, 0.01, 0.03]  # 0.03-adagrad 0.3-sgd
+    learning_rate = [0.06, 0.1, 0.3]  # 0.03-adagrad 0.3-sgd
     num_hiddens = [128]
-    optimization = ['adagrad']  # don't forget to change learning rate
+    optimization = ['sgd']  # don't forget to change learning rate
     # eval
     w = ['embeds']

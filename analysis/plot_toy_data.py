@@ -13,10 +13,11 @@ from ludwigcluster.utils import list_all_param2vals
 NUM_CATS = 32
 
 Params.num_seqs = [1 * 10 ** 6]
-Params.mutation_probs = [[0.1, 0.1], [0.2, 0.2]]
+Params.mutation_prob = [0.01, 0.05, 0.1]
 Params.num_cats_list = [[NUM_CATS]]
 Params.truncate_num_cats = [NUM_CATS]
 Params.truncate_list = [[1.0, 1.0]]
+Params.learning_rate = [0.03]
 
 
 def cluster(m, original_row_words=None, original_col_words=None):
