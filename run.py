@@ -14,6 +14,10 @@ def run_on_cluster():
     """
     run multiple jobs on multiple LudwigCluster nodes.
     """
+    config.Eval.plot_legals_mat = False
+    config.Eval.plot_corr_mat = False
+    config.Eval.plot_tree = False
+    #
     p = config.RemoteDirs.root / '{}_param2val_chunk.pkl'.format(hostname)
     with p.open('rb') as f:
         param2val_chunk = pickle.load(f)

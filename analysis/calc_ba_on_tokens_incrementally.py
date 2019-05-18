@@ -12,13 +12,13 @@ from ludwigcluster.utils import list_all_param2vals
 FIGSIZE = (5, 5)
 TITLE_FONTSIZE = 10
 
-NUMS_SPLITS = 4
+NUMS_SPLITS = 8
 
 NUM_CATS = 32
 TRUNCATE_TYPE = 'legals'
-TRUNCATE_CONTROL = True
+TRUNCATE_CONTROL = False
 
-Params.num_seqs = [5 * 10 ** 6]
+Params.num_seqs = [1 * 10 ** 6]
 Params.num_cats_list = [[NUM_CATS]]
 Params.truncate_num_cats = [NUM_CATS]
 Params.truncate_list = [[0.5, 1.0], [1.0, 1.0]]

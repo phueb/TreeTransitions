@@ -9,7 +9,7 @@ bash kill_job.sh TreeTransitions
 echo "Submitting to Ludwig..."
 cd /home/ph/TreeTransitions
 source venv/bin/activate
-python submit.py -r10 -s
+python submit.py -r5 -s
 deactivate
 echo "Submission completed"
 

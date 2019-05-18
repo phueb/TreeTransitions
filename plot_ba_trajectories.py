@@ -15,13 +15,13 @@ X_STEP = 5
 YLIMs = None
 FIGSIZE = (10, 10)
 TITLE_FONTSIZE = 10
-PLOT_NUM_CATS_LIST = [2, 4, 8, 16, 32]
-TOLERANCE = 0.1
+PLOT_NUM_CATS_LIST = [2, 4, 8, 16, 32, 64]
+TOLERANCE = 0.05
 
 
 default_dict = MatchParams.__dict__.copy()
 MatchParams.truncate_control = [False, True]
-MatchParams.num_cats_list = [[2, 4, 8, 16, 32]]
+MatchParams.num_cats_list = [[2, 4, 8, 16, 32, 64]]
 
 
 def gen_param_ps(param2requested, param2default):

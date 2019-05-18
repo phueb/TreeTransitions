@@ -78,11 +78,13 @@ class ToyData:
         self.num_cats2probe2color = {num_cats: self.make_probe2color(num_cats) for num_cats in params.num_cats_list}
         for num_cats in self.params.num_cats_list:
             self.plot_tree(num_cats) if config.Eval.plot_tree else None
-        # pot legals_mat
+        # plot legals_mat
         if config.Eval.plot_legals_mat:
-            # self.plot_heatmap(cluster(to_corr_mat(self.untruncated_legals_mat)), title='untruncated')
             for legal_mat in self.legals_mats:
-                # self.plot_heatmap(legal_mat)
+                self.plot_heatmap(cluster(legal_mat))
+        # pot legals_mat correlation matrix
+        if config.Eval.plot_corr_mat:
+            for legal_mat in self.legals_mats:
                 self.plot_heatmap(cluster(to_corr_mat(legal_mat)))
         #
         if make_tokens:
@@ -113,8 +115,8 @@ class ToyData:
         print('Done')
         return res
 
-    def truncate_legals_mat(self, truncate):
-        print('Truncating with truncate={}'.format(truncate))
+    def truncate_legals_mat(self, truncate_prob):
+        print('Truncating with truncate_prob={}'.format(truncate_prob))
         # cat2col_ids
         probe2cat = self.num_cats2probe2cat[self.params.truncate_num_cats]
         cat2probes = {cat: [] for cat in probe2cat.values()}
@@ -123,26 +125,38 @@ class ToyData:
             cat = probe2cat[p]
             cat2probes[cat].append(p)
             cat2col_ids[cat].append(self.x_words.index(p))
+        # constraints_mat
+        # truncation control does truncation  and thus controls for smaller number of cues
+        # but does not do the critical manipulation:
+        # introducing idiosyncrasies consistent only WITHIN each category
+        # e.g. if truncate=0.5, only allow 50% of 1s to actually be 1s
+        if self.params.truncate_control == 'col':
+            # each column has a different constraint
+            constraints_mat = np.random.choice([1, -1],
+                                               p=(truncate_prob, 1 - truncate_prob),
+                                               size=np.shape(self.untruncated_legals_mat))
+        elif self.params.truncate_control == 'mat':
+            # all columns have the same constraint
+            template = np.random.choice([1, -1], p=(truncate_prob, 1 - truncate_prob), size=self.num_yws)
+            constraints_mat = np.expand_dims(template, axis=1).repeat(self.num_xws, axis=1)
+        elif self.params.truncate_control == 'none':
+            # constraints are the same within basic level categories, but not across
+            constraints_mat = np.zeros_like(self.untruncated_legals_mat)
+            for cat, cat_col_ids in cat2col_ids.items():
+                template = np.random.choice([1, -1], p=(truncate_prob, 1 - truncate_prob), size=self.num_yws)
+                constraints_mat[:, cat_col_ids] = np.expand_dims(template, axis=1).repeat(len(cat_col_ids), axis=1)
+        else:
+            raise AttributeError('Invalid arg to "truncate_control".')
         # truncate
+        assert np.shape(constraints_mat) == np.shape(self.untruncated_legals_mat)
         res = np.zeros_like(self.untruncated_legals_mat)
-        for cat, cat_col_ids in cat2col_ids.items():
-            # truncation control does truncation  and thus controls for smaller number of cues
-            # but does not do the critical manipulation:
-            # introducing idiosyncrasies consistent only WITHIN each category
-            if self.params.truncate_control:
-                random_row_ids = np.arange(self.num_yws)  # SAME row_ids for each category
-            else:
-                random_row_ids = np.random.permutation(self.num_yws)  # DIFFERENT row_ids for each category
+        for col_id in range(self.num_xws):
+            old_col = self.untruncated_legals_mat.copy()[:, col_id]
+            new_col = constraints_mat[:, col_id]
             #
-            num_nonzero = len(random_row_ids)
-            num_truncate = int(num_nonzero * truncate)
-            truncated_row_ids = random_row_ids[-num_truncate:]
-            # new legals_mat
-            new_col = [1 if row_id in truncated_row_ids else -1 for row_id in np.arange(self.num_yws)]
-            for col_id in cat_col_ids:
-                old_col = self.untruncated_legals_mat.copy()[:, col_id]
-                res[:, col_id] = [1 if old == new == 1 else -1
-                                  for old, new in zip(old_col, new_col)]
+            res[:, col_id] = [self.params.truncate_sign if old == new == self.params.truncate_sign
+                              else -self.params.truncate_sign
+                              for old, new in zip(old_col, new_col)]
         print('mean of legals_mat={:.2f}'.format(np.mean(res)))
         assert np.count_nonzero(res) == np.size(res)
         return res
