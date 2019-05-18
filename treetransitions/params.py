@@ -9,7 +9,7 @@ class Params:
     num_contexts = [1024]
     truncate_type = ['legals']
     truncate_control = ['none', 'col']
-    truncate_num_cats = [64]  # TODO
+    truncate_num_cats = [32]
     truncate_list = [[0.75, 0.75]]  # TODO
     truncate_sign = [1]
     num_seqs = [10 * 10 ** 6]
@@ -20,7 +20,7 @@ class Params:
     stop_mutation_level = [100]  # TODO test
     # probes
     num_probes = [1024]
-    num_cats_list = [[2, 4, 8, 16, 32, 64]]
+    num_cats_list = [[2, 4, 8, 16, 32]]
     # rnn
     num_iterations = [40]  # TODO can set this to 20 in future with num_partitions=1
     num_partitions = [1]  # TODO

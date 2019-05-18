@@ -20,8 +20,7 @@ TOLERANCE = 0.05
 
 
 default_dict = MatchParams.__dict__.copy()
-MatchParams.truncate_control = [False, True]
-MatchParams.num_cats_list = [[2, 4, 8, 16, 32, 64]]
+MatchParams.truncate_control = ['none', 'mat', 'col']
 
 
 def gen_param_ps(param2requested, param2default):
@@ -106,7 +105,7 @@ def plot_ba_trajs(d1, d2, title):
                 label='num_cats={}'.format(num_cats))
         if d2 is not None:
             ax.axhline(y=d2[num_cats], linestyle='dashed', color=c)
-    # plt.legend(loc='best', frameon=False)
+    plt.legend(loc='best', frameon=False)
     #
     ax.set_xticks(xticks)
     ax.set_xticklabels(xticks)

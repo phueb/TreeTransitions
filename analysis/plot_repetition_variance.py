@@ -25,6 +25,8 @@ Params.num_seqs = [1 * 10 ** 6]
 Params.num_cats_list = [[NUM_CATS]]
 Params.truncate_num_cats = [NUM_CATS]
 Params.truncate_list = [[0.5, 0.5], [1.0, 1.0]]
+Params.truncate_control = ['none']
+Params.mutation_prob = [0.01]
 
 
 def make_bigram_count_mat(id_seqs_mat, num_vocab):
