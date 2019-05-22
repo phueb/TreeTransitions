@@ -22,9 +22,9 @@ Params.learning_rate = [0.04]
 Params.mutation_prob = [0.01]
 Params.num_seqs = [1 * 10 ** 6]
 Params.truncate_list = [[0.75, 1.0]]
-Params.num_partitions = [4]
-Params.truncate_num_cats = [64]  # TODO
-Params.truncate_control = ['none']  # TODO
+Params.num_partitions = [2]
+Params.truncate_num_cats = [32]  # TODO
+Params.truncate_control = ['mat']  # TODO
 Params.truncate_sign = [1]
 
 
@@ -42,8 +42,9 @@ def plot_comparison(ys, params):
     ax.tick_params(axis='both', which='both', top=False, right=False)
     # ax.set_ylim([0, 14])
     # plot
+    labels = iter(['+ preferential-selection', '- preferential-selection'])
     for n, y in enumerate(ys):
-        ax.plot(y, label='partition {}'.format(n + 1), linewidth=2)
+        ax.plot(y, label=next(labels) or 'partition {}'.format(n + 1), linewidth=2)
     ax.legend(loc='upper right', frameon=False, fontsize=LEG_FONTSIZE)
     plt.tight_layout()
     plt.show()

@@ -81,7 +81,8 @@ class ToyData:
         # plot legals_mat
         if config.Eval.plot_legals_mat:
             for legal_mat in self.legals_mats:
-                self.plot_heatmap(cluster(legal_mat))
+                # self.plot_heatmap(cluster(legal_mat))
+                self.plot_heatmap(legal_mat)
         # pot legals_mat correlation matrix
         if config.Eval.plot_corr_mat:
             for legal_mat in self.legals_mats:
@@ -162,16 +163,19 @@ class ToyData:
         return res
 
     def plot_heatmap(self, mat, title=None):
-        fig, ax = plt.subplots(figsize=(10, 10), dpi=None)
+        fig, ax = plt.subplots(figsize=(8, 8), dpi=None)
         # heatmap
         print('Plotting heatmap...')
         if title is None:
-            title = 'mutation_prob={}'.format(self.params.mutation_prob)
+            title = 'Legals Matrix'.format(self.params.mutation_prob)
         plt.title(title)
         ax.imshow(mat,
                   aspect='equal',
-                  cmap=plt.get_cmap('jet'),
+                  # cmap=plt.get_cmap('jet'),
+                  cmap='Greys',
                   interpolation='nearest')
+        ax.set_xlabel('Probe words')
+        ax.set_ylabel('Context words')
         # xticks
         num_cols = len(mat.T)
         ax.set_xticks(np.arange(num_cols))

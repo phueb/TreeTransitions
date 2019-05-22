@@ -90,6 +90,7 @@ def plot_ba_trajs(d1, d2, title):
     ax.spines['top'].set_visible(False)
     ax.tick_params(axis='both', which='both', top=False, right=False)
     ax.yaxis.grid(True)
+    ax.xaxis.grid(True)
     ax.set_ylim([0.5, 1.01])
     # plot
     xticks = None
@@ -105,11 +106,10 @@ def plot_ba_trajs(d1, d2, title):
                 label='num_cats={}'.format(num_cats))
         if d2 is not None:
             ax.axhline(y=d2[num_cats], linestyle='dashed', color=c)
-    plt.legend(loc='best', frameon=False)
+    # plt.legend(loc='best', frameon=False)
     #
     ax.set_xticks(xticks)
     ax.set_xticklabels(xticks)
-    ax.xaxis.grid(True)
     #
     plt.tight_layout()
     plt.show()
