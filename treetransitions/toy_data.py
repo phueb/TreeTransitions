@@ -10,19 +10,23 @@ from treetransitions.utils import to_corr_mat, calc_ba, cluster
 from treetransitions import config
 
 
-def make_sequences_chunk(x_words, y_words, num_seqs, name2legals_mat):
-    print('\nMaking {} sequences...'.format(num_seqs))
+def make_sequences_chunk(num_seqs, name2words, name2legals_mat, probe_prob):  # TODO probe_prob
+    print('Making {} sequences...'.format(num_seqs))
     chunks = []
-    num_legals_mats = len(name2legals_mat)
-    for legals_mat in name2legals_mat.values():
+    num_chunks = len(name2legals_mat)
+    num_seqs_in_chunk = num_seqs // num_chunks
+    for name, legals_mat in name2legals_mat.items():
+        xws, yws = name2words[name]
         # xw2yws
         xw2yws = {}
-        for xw, col in zip(x_words, legals_mat.T):
-            yws = [yw for yw, val in zip(y_words, col) if val == 1]  # if statement is required
-            xw2yws[xw] = yws
+        assert len(xws) == len(legals_mat.T)
+        for xw, col in zip(xws, legals_mat.T):
+            xw2yws[xw] = [yw for yw, val in zip(yws, col) if val == 1]  # if-statement is required
         #
         seq_size = 2
-        chunk = np.random.choice(x_words, size=(num_seqs // num_legals_mats, seq_size))
+        num_rows_adj = num_seqs_in_chunk * probe_prob if name == 'p' else num_seqs_in_chunk * (1 - probe_prob)
+        print(name, num_rows_adj)
+        chunk = np.random.choice(xws, size=(int(num_rows_adj), seq_size))
         for seq in chunk:
             xw = seq[0]
             yw = np.random.choice(xw2yws[xw], size=1, p=None).item()
@@ -45,7 +49,7 @@ class ToyData:
     def __init__(self, params, max_ba=True, make_tokens=True):
         self.params = params
         self.name2words = {name: (self.make_words(name + 'x', self.params.num_probes),
-                                    self.make_words(name + 'y', self.params.num_contexts))
+                                  self.make_words(name + 'y', self.params.num_contexts))
                            for name in self.params.syn_cats + ['p']}
         self.x_words = self.name2words['p'][0]  # probes
         self.y_words = self.name2words['p'][1]  # non-probes (or context words)
@@ -54,7 +58,8 @@ class ToyData:
         self.num_vocab = len(self.vocab)  # used by rnn
         self.word2id = {word: n for n, word in enumerate(self.vocab)}
         #
-        self.name2legals_mat = {name: self.make_legals_mat(xws, yws) for name, (xws, yws) in self.name2words.items()}
+        self.name2legals_mat = {name: self.make_legals_mat(name, xws, yws)
+                                for name, (xws, yws) in self.name2words.items()}
         self.probes_legals_mat = self.name2legals_mat['p']
         #
         self.z = self.make_z()
@@ -69,10 +74,12 @@ class ToyData:
             self.plot_tree(num_cats) if config.Eval.plot_tree else None
         # plot legals_mat
         if config.Eval.plot_legals_mat:
-            self.plot_heatmap(self.probes_legals_mat)
+            for name, legals_mat in self.name2legals_mat.items():
+                self.plot_heatmap(legals_mat, name)
         # pot legals_mat correlation matrix
         if config.Eval.plot_corr_mat:
-            self.plot_heatmap(cluster(to_corr_mat(self.probes_legals_mat)))
+            for name, legals_mat in self.name2legals_mat.items():
+                self.plot_heatmap(cluster(to_corr_mat(legals_mat)), name)
         #
         if make_tokens:
             self.word_sequences_mat = self.make_sequences_mat()
@@ -86,7 +93,7 @@ class ToyData:
         vocab = ['{}{}'.format(prefix, i) for i in np.arange(num)]
         return vocab
 
-    def make_vocab(self):  # TODO test
+    def make_vocab(self):
         res = []
         for name, (xws, yws) in self.name2words.items():
             res.extend(xws + yws)
@@ -95,7 +102,7 @@ class ToyData:
 
     # /////////////////////////////////////////////////////////////// legals
 
-    def make_legals_mat(self, xws, yws):
+    def make_legals_mat(self, name, xws, yws):
         """
         each row contains a vector sampled from hierarchical process.
         each column represents which y_words are allowed to follow an x_word (word associated with column)
@@ -103,22 +110,20 @@ class ToyData:
         res = np.zeros((len(yws), len(xws)), dtype=np.int)
         for row_id, yw in enumerate(yws):
             res[row_id, :] = self.sample_from_hierarchical_diffusion()
-        print('Done')
+        print('Shape of "{}" legals_mat={}'.format(name, res.shape))
         return res
 
-    def plot_heatmap(self, mat, title=None):
+    def plot_heatmap(self, mat, name):
         fig, ax = plt.subplots(figsize=(8, 8), dpi=None)
         # heatmap
         print('Plotting heatmap...')
-        if title is None:
-            title = 'Legals Matrix'.format(self.params.mutation_prob)
-        plt.title(title)
+        plt.title('Legals Matrix'.format(self.params.mutation_prob))
         ax.imshow(mat,
                   aspect='equal',
                   # cmap=plt.get_cmap('jet'),
                   cmap='Greys',
                   interpolation='nearest')
-        ax.set_xlabel('Probe words')
+        ax.set_xlabel('Words in Category "{}"'.format(name))
         ax.set_ylabel('Context words')
         # xticks
         num_cols = len(mat.T)
@@ -228,11 +233,15 @@ class ToyData:
         pool = mp.Pool(processes=num_processes)
         # make sequences
         num_chunks = self.params.num_partitions * num_processes
-        print('num_chunks={}'.format(num_chunks))
         num_seqs_in_chunk = self.params.num_seqs // num_chunks
+        probe_prob_linspace = np.repeat(
+            np.linspace(*self.params.probe_probs, self.params.num_partitions, endpoint=True), num_processes).round(2)
+        print('probe_prob_linspace:')
+        print(probe_prob_linspace)
         results = [pool.apply_async(
             make_sequences_chunk,
-            args=(self.x_words, self.y_words, num_seqs_in_chunk, self.name2legals_mat)) for _ in range(num_chunks)]
+            args=(num_seqs_in_chunk, self.name2words, self.name2legals_mat, probe_prob))
+            for probe_prob in probe_prob_linspace]
         chunks = []
         print('Creating sequences...')
         try:
