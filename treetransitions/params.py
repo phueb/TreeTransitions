@@ -7,14 +7,14 @@ class ObjectView(object):
 class Params:
     # input
     probe_probs = [[0.5, 0.25], [0.25, 0.5]]
-    syn_cats = [['v']]  # consider making this an odd number (to speedup GPU computation)
+    syn_cats = [['v', 'a', 'd']]  # consider making this an odd number (to speedup GPU computation)
     num_contexts = [512]
     num_seqs = [5 * 10 ** 6]
     mutation_prob = [0.01]
     num_probes = [512]  # this is also used for size of syntactic categories
     num_cats_list = [[2, 4, 8, 16, 32]]
     # rnn
-    num_iterations = [10]
+    num_iterations = [20]
     num_partitions = [2]
     rnn_type = ['srn']
     mb_size = [64]

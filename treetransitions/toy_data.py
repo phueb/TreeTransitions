@@ -10,11 +10,12 @@ from treetransitions.utils import to_corr_mat, calc_ba, cluster
 from treetransitions import config
 
 
-def make_sequences_chunk(num_seqs, name2words, name2legals_mat, probe_prob):  # TODO probe_prob
+def make_sequences_chunk(num_seqs, name2words, name2legals_mat, probe_prob):
     print('Making {} sequences...'.format(num_seqs))
     chunks = []
     num_chunks = len(name2legals_mat)
-    num_seqs_in_chunk = num_seqs // num_chunks
+    num_probe_seqs = int(num_seqs * probe_prob)
+    num_other_seqs = int((num_seqs - num_probe_seqs) / (num_chunks - 1))
     for name, legals_mat in name2legals_mat.items():
         xws, yws = name2words[name]
         # xw2yws
@@ -24,9 +25,9 @@ def make_sequences_chunk(num_seqs, name2words, name2legals_mat, probe_prob):  # 
             xw2yws[xw] = [yw for yw, val in zip(yws, col) if val == 1]  # if-statement is required
         #
         seq_size = 2
-        num_rows_adj = num_seqs_in_chunk * probe_prob if name == 'p' else num_seqs_in_chunk * (1 - probe_prob)
-        print(name, num_rows_adj)
-        chunk = np.random.choice(xws, size=(int(num_rows_adj), seq_size))
+        num_seqs = num_probe_seqs if name == 'p' else num_other_seqs
+        print(name, num_seqs)
+        chunk = np.random.choice(xws, size=(num_seqs, seq_size))
         for seq in chunk:
             xw = seq[0]
             yw = np.random.choice(xw2yws[xw], size=1, p=None).item()
@@ -248,7 +249,7 @@ class ToyData:
             for n, r in enumerate(results):
                 chunk = r.get()
                 if n % num_processes == 0:
-                    print('\nnum types in chunk={}'.format(len(set(np.hstack(chunk)))))
+                    print('num probes in chunk={}'.format(len([w for w in chunk[:, 0] if w in self.x_words])))
                 chunks.append(chunk)
             pool.close()
         except KeyboardInterrupt:
