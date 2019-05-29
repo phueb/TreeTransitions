@@ -18,27 +18,12 @@ def make_sequences_chunk(x_words, y_words, num_seqs, legals_mat):
         yws = [yw for yw, val in zip(y_words, col) if val == 1] # if statement is required
         xw2yws[xw] = yws
     #
-    truncate_type = 'legals'  # TODO make a separate branch for probe truncation
     seq_size = 2
     res = np.random.choice(x_words, size=(num_seqs, seq_size))
-    num_y_word_insertions = 0
     for seq in res:
-        if truncate_type == 'probes':
-            truncate= None
-            if np.random.binomial(n=1, p=1 - truncate, size=1).item():
-                seq[:] = np.random.choice(y_words, size=2)
-                num_y_word_insertions += 1
-                continue
-            else:
-                xw = seq[0]
-                yw = np.random.choice(xw2yws[xw], size=1, p=None).item()
-                seq[-1] = yw
-        elif truncate_type == 'legals':
-            xw = seq[0]
-            yw = np.random.choice(xw2yws[xw], size=1, p=None).item()
-            seq[-1] = yw
-        else:
-            raise AttributeError('Invalid arg to "truncate_type".')
+        xw = seq[0]
+        yw = np.random.choice(xw2yws[xw], size=1, p=None).item()
+        seq[-1] = yw
     return res
 
 

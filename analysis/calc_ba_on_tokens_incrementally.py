@@ -15,14 +15,12 @@ TITLE_FONTSIZE = 10
 NUMS_SPLITS = 8
 
 NUM_CATS = 32
-TRUNCATE_TYPE = 'legals'
 TRUNCATE_CONTROL = False
 
 Params.num_seqs = [1 * 10 ** 6]
 Params.num_cats_list = [[NUM_CATS]]
 Params.truncate_num_cats = [NUM_CATS]
 Params.truncate_list = [[0.5, 1.0], [1.0, 1.0]]
-Params.truncate_type = [TRUNCATE_TYPE]
 Params.truncate_control = [TRUNCATE_CONTROL]
 
 
@@ -31,10 +29,7 @@ def calc_ba_from_sequences_chunk(seqs_chunk, d):
         assert len(seq) == 2
         p, c = seq
         vocab_id = toy_data.word2id[c]
-        try:
-            d[p][vocab_id] += 1
-        except KeyError:  # probe word was replaced by y_word (due to truncate_type='probes')
-            continue
+        d[p][vocab_id] += 1
     # ba
     p_acts = [d[p] for p in probes]
     ba = calc_ba(cosine_similarity(p_acts), probes, probe2cat)
@@ -93,5 +88,4 @@ for param2vals in list_all_param2vals(Params, update_d={'param_name': 'test', 'j
 # plot
 plot_ba_trajs(truncate2bas, truncate2num_windows[truncate],
               title='model=bag-of-words\n'
-                    'truncate_type={} truncate_control={}'.format(
-                  TRUNCATE_TYPE, TRUNCATE_CONTROL))
+                    'truncate_control={}'.format(TRUNCATE_CONTROL))

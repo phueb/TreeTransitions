@@ -16,6 +16,7 @@ Params.num_seqs = [1 * 10 ** 4]
 Params.num_cats_list = [[NUM_CATS]]
 Params.truncate_num_cats = [NUM_CATS]
 Params.truncate_list = [[0.5, 0.5], [1.0, 1.0]]
+Params.truncate_control = ['col']
 
 
 def calc_overlap(d, cat):
@@ -33,7 +34,7 @@ def calc_overlap(d, cat):
                 num_total += 1
 
     res = num / num_total  # division controls for greater number of probes in partition 1
-    print(res)
+    # print(res)
     return res
 
 

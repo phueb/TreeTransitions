@@ -7,7 +7,6 @@ class ObjectView(object):
 class Params:
     # input
     num_contexts = [1024]
-    truncate_type = ['legals']
     truncate_control = ['none']
     truncate_num_cats = [32]
     truncate_list = [[1.0, 0.75], [0.75, 1.0]]  # TODO

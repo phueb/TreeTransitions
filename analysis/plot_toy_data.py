@@ -53,7 +53,7 @@ for param2vals in list_all_param2vals(Params, update_d={'param_name': 'test', 'j
     toy_data = ToyData(params, max_ba=False, make_tokens=False)
 
     # corr_mat
-    corr_mat = to_corr_mat(toy_data.legals_mat)
+    corr_mat = to_corr_mat(toy_data.untruncated_legals_mat)
 
     clustered_corr_mat, row_words, col_words = cluster(corr_mat, toy_data.vocab, toy_data.vocab)
     plot_heatmap(clustered_corr_mat, [], [])  # row_words, col_words

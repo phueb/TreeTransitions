@@ -31,9 +31,9 @@ Params.truncate_sign = [1]
 def plot_comparison(ys, params):
     fig, ax = plt.subplots(1, figsize=FIGSIZE, dpi=DPI)
     plt.title('truncate_list={}\ntruncate_control={}\n'
-              'truncate_num_cats={}\ntruncate_type={}\nmutation_prob={}'.format(
+              'truncate_num_cats={}\nmutation_prob={}'.format(
         params.truncate_list, params.truncate_control,
-        params.truncate_num_cats, params.truncate_type, params.mutation_prob),
+        params.truncate_num_cats, params.mutation_prob),
         fontsize=AX_FONTSIZE)
     ax.set_ylabel('Singular value', fontsize=AX_FONTSIZE)
     ax.set_xlabel('Principal Component', fontsize=AX_FONTSIZE)

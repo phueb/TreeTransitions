@@ -14,7 +14,6 @@ Params.num_seqs = [2 * 10 ** 6]
 Params.num_cats_list = [[2, 8, NUM_CATS]]
 Params.truncate_num_cats = [NUM_CATS]
 Params.truncate_list = [[1.0, 1.0]]
-Params.truncate_type = ['legals']
 
 
 for param2vals in list_all_param2vals(Params, update_d={'param_name': 'test', 'job_name': 'test'}):
