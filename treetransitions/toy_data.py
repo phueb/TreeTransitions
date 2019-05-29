@@ -10,20 +10,27 @@ from treetransitions.utils import to_corr_mat, calc_ba, cluster
 from treetransitions import config
 
 
-def make_sequences_chunk(x_words, y_words, num_seqs, legals_mat):
+def make_sequences_chunk(x_words, y_words, num_seqs, name2legals_mat):
     print('\nMaking {} sequences...'.format(num_seqs))
-    # xw2yws
-    xw2yws = {}
-    for xw, col in zip(x_words, legals_mat.T):
-        yws = [yw for yw, val in zip(y_words, col) if val == 1] # if statement is required
-        xw2yws[xw] = yws
-    #
-    seq_size = 2
-    res = np.random.choice(x_words, size=(num_seqs, seq_size))
-    for seq in res:
-        xw = seq[0]
-        yw = np.random.choice(xw2yws[xw], size=1, p=None).item()
-        seq[-1] = yw
+    chunks = []
+    num_legals_mats = len(name2legals_mat)
+    for legals_mat in name2legals_mat.values():
+        # xw2yws
+        xw2yws = {}
+        for xw, col in zip(x_words, legals_mat.T):
+            yws = [yw for yw, val in zip(y_words, col) if val == 1]  # if statement is required
+            xw2yws[xw] = yws
+        #
+        seq_size = 2
+        chunk = np.random.choice(x_words, size=(num_seqs // num_legals_mats, seq_size))
+        for seq in chunk:
+            xw = seq[0]
+            yw = np.random.choice(xw2yws[xw], size=1, p=None).item()
+            seq[-1] = yw
+        chunks.append(chunk)
+    # stack + shuffle
+    stacked = np.vstack(chunks)
+    res = np.random.permutation(stacked)
     return res
 
 
@@ -37,25 +44,22 @@ each column (x-word) represents which y_words are allowed to follow x_word
 class ToyData:
     def __init__(self, params, max_ba=True, make_tokens=True):
         self.params = params
-        self.x_words = self.make_x_words()  # probes
-        self.y_words = self.make_y_words()  # non-probes (or context words)
-        self.num_yws = len(self.y_words)
-        self.num_xws = len(self.x_words)
+        self.name2words = {name: (self.make_words(name + 'x', self.params.num_probes),
+                                    self.make_words(name + 'y', self.params.num_contexts))
+                           for name in self.params.syn_cats + ['p']}
+        self.x_words = self.name2words['p'][0]  # probes
+        self.y_words = self.name2words['p'][1]  # non-probes (or context words)
         #
-        self.vocab = list(set(self.y_words + self.x_words))
+        self.vocab = self.make_vocab()
         self.num_vocab = len(self.vocab)  # used by rnn
         self.word2id = {word: n for n, word in enumerate(self.vocab)}
         #
-        self.node0 = 1  # TODO test node is always 1
-        self.untruncated_legals_mat = self.make_legals_mat()
+        self.name2legals_mat = {name: self.make_legals_mat(xws, yws) for name, (xws, yws) in self.name2words.items()}
+        self.probes_legals_mat = self.name2legals_mat['p']
         #
         self.z = self.make_z()
-        self.probes = self.make_probes()
         self.num_cats2probe2cat = {num_cats: self.make_probe2cat(num_cats)
                                    for num_cats in params.num_cats_list}
-        #
-        self.truncate_linspace = np.linspace(*self.params.truncate_list, self.params.num_partitions)
-        self.legals_mats = [self.truncate_legals_mat(truncate) for truncate in self.truncate_linspace]  # TODO test
         # ba
         self.num_cats2max_ba = self.make_num_cats2max_ba() if max_ba else None
         # plot
@@ -65,13 +69,10 @@ class ToyData:
             self.plot_tree(num_cats) if config.Eval.plot_tree else None
         # plot legals_mat
         if config.Eval.plot_legals_mat:
-            for legal_mat in self.legals_mats:
-                # self.plot_heatmap(cluster(legal_mat))
-                self.plot_heatmap(legal_mat)
+            self.plot_heatmap(self.probes_legals_mat)
         # pot legals_mat correlation matrix
         if config.Eval.plot_corr_mat:
-            for legal_mat in self.legals_mats:
-                self.plot_heatmap(cluster(to_corr_mat(legal_mat)))
+            self.plot_heatmap(cluster(to_corr_mat(self.probes_legals_mat)))
         #
         if make_tokens:
             self.word_sequences_mat = self.make_sequences_mat()
@@ -80,71 +81,29 @@ class ToyData:
             self.id_sequences_mat = np.asarray([[self.word2id[w] for w in seq]
                                                 for seq in self.word_sequences_mat]).reshape((self.num_seqs, -1))
 
-    def make_y_words(self):
-        vocab = ['y{}'.format(i) for i in np.arange(self.params.num_contexts)]
+    @staticmethod
+    def make_words(prefix, num):
+        vocab = ['{}{}'.format(prefix, i) for i in np.arange(num)]
         return vocab
 
-    def make_x_words(self):
-        vocab = ['x{}'.format(i) for i in np.arange(self.params.num_probes)]
-        return vocab
+    def make_vocab(self):  # TODO test
+        res = []
+        for name, (xws, yws) in self.name2words.items():
+            res.extend(xws + yws)
+        print('Vocab size={}'.format(len(res)))
+        return res
 
     # /////////////////////////////////////////////////////////////// legals
 
-    def make_legals_mat(self):
+    def make_legals_mat(self, xws, yws):
         """
         each row contains a vector sampled from hierarchical process.
         each column represents which y_words are allowed to follow an x_word (word associated with column)
         """
-        res = np.zeros((self.num_yws, self.num_xws), dtype=np.int)
-        for row_id, yw in enumerate(self.y_words):
-            res[row_id, :] = self.sample_from_hierarchical_diffusion(self.node0)
+        res = np.zeros((len(yws), len(xws)), dtype=np.int)
+        for row_id, yw in enumerate(yws):
+            res[row_id, :] = self.sample_from_hierarchical_diffusion()
         print('Done')
-        return res
-
-    def truncate_legals_mat(self, truncate_prob):
-        print('Truncating with truncate_prob={}'.format(truncate_prob))
-        # cat2col_ids
-        probe2cat = self.num_cats2probe2cat[self.params.truncate_num_cats]
-        cat2probes = {cat: [] for cat in probe2cat.values()}
-        cat2col_ids = {cat: [] for cat in probe2cat.values()}
-        for p in self.probes:
-            cat = probe2cat[p]
-            cat2probes[cat].append(p)
-            cat2col_ids[cat].append(self.x_words.index(p))
-        # constraints_mat
-        # truncation control does truncation  and thus controls for smaller number of cues
-        # but does not do the critical manipulation:
-        # introducing idiosyncrasies consistent only WITHIN each category
-        # e.g. if truncate=0.5, only allow 50% of 1s to actually be 1s
-        if self.params.truncate_control == 'col':
-            # each column has a different constraint
-            constraints_mat = np.random.choice([1, -1],
-                                               p=(truncate_prob, 1 - truncate_prob),
-                                               size=np.shape(self.untruncated_legals_mat))
-        elif self.params.truncate_control == 'mat':
-            # all columns have the same constraint
-            template = np.random.choice([1, -1], p=(truncate_prob, 1 - truncate_prob), size=self.num_yws)
-            constraints_mat = np.expand_dims(template, axis=1).repeat(self.num_xws, axis=1)
-        elif self.params.truncate_control == 'none':
-            # constraints are the same within basic level categories, but not across
-            constraints_mat = np.zeros_like(self.untruncated_legals_mat)
-            for cat, cat_col_ids in cat2col_ids.items():
-                template = np.random.choice([1, -1], p=(truncate_prob, 1 - truncate_prob), size=self.num_yws)
-                constraints_mat[:, cat_col_ids] = np.expand_dims(template, axis=1).repeat(len(cat_col_ids), axis=1)
-        else:
-            raise AttributeError('Invalid arg to "truncate_control".')
-        # truncate
-        assert np.shape(constraints_mat) == np.shape(self.untruncated_legals_mat)
-        res = np.zeros_like(self.untruncated_legals_mat)
-        for col_id in range(self.num_xws):
-            old_col = self.untruncated_legals_mat.copy()[:, col_id]
-            new_col = constraints_mat[:, col_id]
-            #
-            res[:, col_id] = [self.params.truncate_sign if old == new == self.params.truncate_sign
-                              else -self.params.truncate_sign
-                              for old, new in zip(old_col, new_col)]
-        print('mean of legals_mat={:.2f}'.format(np.mean(res)))
-        assert np.count_nonzero(res) == np.size(res)
         return res
 
     def plot_heatmap(self, mat, title=None):
@@ -179,7 +138,7 @@ class ToyData:
 
     def make_z(self, method='single', metric='euclidean'):
         # careful: idx1 and idx2 in res are not integers (they are floats)
-        corr_mat = to_corr_mat(self.untruncated_legals_mat)
+        corr_mat = to_corr_mat(self.probes_legals_mat)
         res = linkage(corr_mat, metric=metric, method=method)  # need to cluster correlation matrix otherwise messy
         return res
 
@@ -191,17 +150,18 @@ class ToyData:
         # a row in z is: [idx1, idx2, distance, count]
         # all idx >= len(X) actually refer to the cluster formed in Z[idx - len(X)]
         """
+        num_xws = len(self.x_words)
         try:
             p = self.x_words[node_id.astype(int)]
         except IndexError:  # in case idx does not refer to leaf node (then it refers to cluster)
-            new_node_id1 = z[node_id.astype(int) - self.num_xws][0]
-            new_node_id2 = z[node_id.astype(int) - self.num_xws][1]
+            new_node_id1 = z[node_id.astype(int) - num_xws][0]
+            new_node_id2 = z[node_id.astype(int) - num_xws][1]
             self.get_all_probes_in_tree(res1, z, new_node_id1)
             self.get_all_probes_in_tree(res1, z, new_node_id2)
         else:
             res1.append(p)
 
-    def make_probes(self):
+    def make_probe2cat(self, num_cats):
         # find cluster (identified by idx1 and idx2) with num_probes nodes beneath it
         for row in self.z:
             idx1, idx2, dist, count = row
@@ -209,15 +169,13 @@ class ToyData:
                 break
         else:
             raise RuntimeError('Did not find any cluster with count={}'.format(self.params.num_probes))
-        # get probes - tree structure is preserved in order of how probes are retrieved from tree
-        res = []
+        # get xwords in correct order - tree structure is preserved in order of how probes are retrieved from tree
+        ordered_xws = []
         for idx in [idx1, idx2]:
-            self.get_all_probes_in_tree(res, self.z, idx)
-        print('Collected {} probes'.format(len(res)))
-        assert set(self.x_words) == set(res)
-        return res
-
-    def make_probe2cat(self, num_cats):
+            self.get_all_probes_in_tree(ordered_xws, self.z, idx)
+        print('Collected {} probes'.format(len(ordered_xws)))
+        assert set(self.x_words) == set(ordered_xws)
+        #
         print('Assigning probes to {} categories'.format(num_cats))
         num_members = self.params.num_probes / num_cats
         assert num_members.is_integer()
@@ -225,8 +183,7 @@ class ToyData:
         #
         assert num_cats % 2 == 0
         res = {}
-
-        for cat, cat_probes in enumerate(itertoolz.partition_all(num_members, self.probes)):
+        for cat, cat_probes in enumerate(itertoolz.partition_all(num_members, ordered_xws)):
             assert len(cat_probes) == num_members
             res.update({p: cat for p in cat_probes})
         return res
@@ -234,24 +191,26 @@ class ToyData:
     def make_probe2color(self, num_cats):
         res = {}
         cmap = self.num_cats2cmap[num_cats]
-        for p in self.probes:
+        for p in self.x_words:
             cat = self.num_cats2probe2cat[num_cats][p]
             res[p] = to_hex(cmap(cat))
         return res
 
     # /////////////////////////////////////////////////////////////// sequences
 
-    def sample_from_hierarchical_diffusion(self, node0):
+    def sample_from_hierarchical_diffusion(self):
         """the higher the change probability (e),
          the less variance accounted for by higher-up nodes"""
-        nodes = [node0]
-        for level in range(self.params.num_levels):
-            candidate_nodes = nodes * self.params.num_descendants
+        num_descendants = 2
+        nodes = [1]
+        while True:
+            candidate_nodes = nodes * num_descendants
             s = len(candidate_nodes)
-            mutation_prob = 0 if level >= self.params.stop_mutation_level else self.params.mutation_prob
             nodes = [node if p else -node
                      for node, p in zip(candidate_nodes,
-                                        np.random.binomial(n=1, p=1 - mutation_prob, size=s))]
+                                        np.random.binomial(n=1, p=1 - self.params.mutation_prob, size=s))]
+            if len(nodes) >= self.params.num_probes:
+                break
         return nodes
 
     def make_sequences_mat(self):
@@ -268,18 +227,12 @@ class ToyData:
         num_processes = config.Eval.num_processes
         pool = mp.Pool(processes=num_processes)
         # make sequences
-        if len(self.legals_mats) == 1:
-            num_chunks = num_processes
-            legals_mats = self.legals_mats * num_chunks
-        else:
-            num_chunks = len(self.legals_mats)
-            legals_mats = self.legals_mats
-        print('num legals_mats={}'.format(num_chunks))
-        print('num num_chunks={}'.format(num_chunks))
+        num_chunks = self.params.num_partitions * num_processes
+        print('num_chunks={}'.format(num_chunks))
         num_seqs_in_chunk = self.params.num_seqs // num_chunks
         results = [pool.apply_async(
             make_sequences_chunk,
-            args=(self.x_words, self.y_words, num_seqs_in_chunk, legals_mat)) for legals_mat in legals_mats]
+            args=(self.x_words, self.y_words, num_seqs_in_chunk, self.name2legals_mat)) for _ in range(num_chunks)]
         chunks = []
         print('Creating sequences...')
         try:
@@ -298,7 +251,7 @@ class ToyData:
         # make divisible
         num_remainder = len(stacked) % (self.params.mb_size * self.params.num_partitions)
         num_divisible = len(stacked) - num_remainder
-        print('Shortened num_seqs to {:,}'.format(num_divisible))
+        print('Shortened num_seqs to {:,} by removing {:,} seqs'.format(num_divisible, num_remainder))
         return stacked[:num_divisible]
 
     def gen_part_id_seqs(self):
@@ -311,9 +264,9 @@ class ToyData:
     def make_num_cats2max_ba(self):
         res = {}
         for num_cats in self.params.num_cats_list:
-            probes = self.probes
+            probes = self.x_words
             probe2cat = self.num_cats2probe2cat[num_cats]
-            probe_acts2 = self.untruncated_legals_mat[:, [self.x_words.index(p) for p in probes]].T
+            probe_acts2 = self.probes_legals_mat[:, [self.x_words.index(p) for p in probes]].T
             ba2 = calc_ba(cosine_similarity(probe_acts2), probes, probe2cat)
             print('num_cats={} input-data col-wise ba={:.3f}'.format(num_cats, ba2))
             res[num_cats] = ba2

@@ -35,7 +35,7 @@ def main_job(param2val):
         for iteration in range(params.num_iterations):
             # ba
             for num_cats in params.num_cats_list:
-                probes = toy_data.probes
+                probes = toy_data.x_words
                 probe2cat = toy_data.num_cats2probe2cat[num_cats]
                 #
                 if params.w == 'embeds':
