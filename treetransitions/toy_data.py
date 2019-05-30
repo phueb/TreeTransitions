@@ -10,31 +10,27 @@ from treetransitions.utils import to_corr_mat, calc_ba, cluster
 from treetransitions import config
 
 
-def make_sequences_chunk(num_seqs, name2words, name2legals_mat, probe_prob, no_syn_hierarchy):
+def make_sequences_chunk(num_seqs, name2words, name2legals_mat, structure_prob):
     print('Making {} sequences...'.format(num_seqs))
     chunks = []
     num_chunks = len(name2legals_mat)
-    num_probe_seqs = int(num_seqs * probe_prob)
-    num_other_seqs = int((num_seqs - num_probe_seqs) / (num_chunks - 1))
     for name, legals_mat in name2legals_mat.items():
         xws, yws = name2words[name]
-
-        # TODO control for hierarchical structure in syntactic categories
-
-        if no_syn_hierarchy and name != 'p':
-            ones_prob = np.sum(np.clip(legals_mat, 0, 1)) / legals_mat.size
-            legals_mat = np.random.binomial(n=1, p=ones_prob, size=np.shape(legals_mat))
-
         # xw2yws
         xw2yws = {}
         assert len(xws) == len(legals_mat.T)
+        if name == 'p':
+            legal_vals = iter([1] * legals_mat.size)  # this preserves hierarchical structure of probes
+        else:
+            legal_vals = iter(np.random.choice([1, -1], size=legals_mat.size, p=[structure_prob, 1 - structure_prob]))
         for xw, col in zip(xws, legals_mat.T):
-            xw2yws[xw] = [yw for yw, val in zip(yws, col) if val == 1]  # if-statement is required
+            xw2yws[xw] = [yw for yw, val in zip(yws, col)    # if-statement is required
+                          if val == next(legal_vals)]
         #
         seq_size = 2
-        num_seqs = num_probe_seqs if name == 'p' else num_other_seqs
-        print(name, num_seqs)
-        chunk = np.random.choice(xws, size=(num_seqs, seq_size))
+        num_chunk_seqs = int(num_seqs / num_chunks)
+        print(name, num_chunk_seqs)
+        chunk = np.random.choice(xws, size=(num_chunk_seqs, seq_size))
         for seq in chunk:
             xw = seq[0]
             yw = np.random.choice(xw2yws[xw], size=1, p=None).item()
@@ -242,14 +238,15 @@ class ToyData:
         # make sequences
         num_chunks = self.params.num_partitions * num_processes
         num_seqs_in_chunk = self.params.num_seqs // num_chunks
-        probe_prob_linspace = np.repeat(
-            np.linspace(*self.params.probe_probs, self.params.num_partitions, endpoint=True), num_processes).round(2)
-        print('probe_prob_linspace:')
-        print(probe_prob_linspace)
+        linspace = np.repeat(
+            np.linspace(*self.params.structure_probs, self.params.num_partitions, endpoint=True),
+            num_processes).round(2)
+        print('linspace:')
+        print(linspace)
         results = [pool.apply_async(
             make_sequences_chunk,
-            args=(num_seqs_in_chunk, self.name2words, self.name2legals_mat, probe_prob, self.params.no_syn_hierarchy))
-            for probe_prob in probe_prob_linspace]
+            args=(num_seqs_in_chunk, self.name2words, self.name2legals_mat, structure_prob))
+            for structure_prob in linspace]
         chunks = []
         print('Creating sequences...')
         try:

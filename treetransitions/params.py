@@ -6,8 +6,7 @@ class ObjectView(object):
 
 class Params:
     # input
-    probe_probs = [[0.5, 0.25], [0.25, 0.5]]
-    no_syn_hierarchy = [False]
+    structure_probs = [[0.5, 1.0], [1.0, 0.5]]  # probability of drawing a 1 from [1, -1]; a 1 preserves hierarchy
     syn_cats = [['v']]  # consider making this an odd number (to speedup GPU computation)
     num_contexts = [512]
     num_seqs = [5 * 10 ** 6]
@@ -26,7 +25,7 @@ class Params:
     w = ['embeds']
 
 
-for probs in Params.probe_probs:
+for probs in Params.structure_probs:
     if probs[0] != probs[1]:
         for num_partitions in Params.num_partitions:
             assert num_partitions != 1  # no incremental structure without num_partitions > 1
