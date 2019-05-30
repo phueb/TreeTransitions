@@ -16,25 +16,17 @@ FIGSIZE = (8, 8)
 DPI = None
 
 
-CLIPPING = True
+CLIPPING = False
 
-Params.learning_rate = [0.04]
 Params.mutation_prob = [0.01]
 Params.num_seqs = [1 * 10 ** 6]
-Params.truncate_list = [[0.75, 1.0]]
 Params.num_partitions = [2]
-Params.truncate_num_cats = [32]  # TODO
-Params.truncate_control = ['mat']  # TODO
-Params.truncate_sign = [1]
+Params.structure_probs = [[0.5, 1.0]]
 
 
 def plot_comparison(ys, params):
     fig, ax = plt.subplots(1, figsize=FIGSIZE, dpi=DPI)
-    plt.title('truncate_list={}\ntruncate_control={}\n'
-              'truncate_num_cats={}\nmutation_prob={}'.format(
-        params.truncate_list, params.truncate_control,
-        params.truncate_num_cats, params.mutation_prob),
-        fontsize=AX_FONTSIZE)
+    plt.title('Effect of the reduction of non-probe\nhierarchical category structure on SVD', fontsize=AX_FONTSIZE)
     ax.set_ylabel('Singular value', fontsize=AX_FONTSIZE)
     ax.set_xlabel('Principal Component', fontsize=AX_FONTSIZE)
     ax.spines['right'].set_visible(False)
@@ -42,7 +34,7 @@ def plot_comparison(ys, params):
     ax.tick_params(axis='both', which='both', top=False, right=False)
     # ax.set_ylim([0, 14])
     # plot
-    labels = iter(['+ preferential-selection', '- preferential-selection'])
+    labels = iter(['structure probability={}'.format(sp) for sp in params.structure_probs])
     for n, y in enumerate(ys):
         ax.plot(y, label=next(labels) or 'partition {}'.format(n + 1), linewidth=2)
     ax.legend(loc='upper right', frameon=False, fontsize=LEG_FONTSIZE)
@@ -105,7 +97,13 @@ for param2val in list_all_param2vals(Params, update_d={'param_name': 'test', 'jo
     # use in_out correlation mat computed on tokens as input to PCA
     singular_vals = []
     for word_seq_mat_chunk in np.vsplit(toy_data.word_sequences_mat, params.num_partitions):
-        in_out_corr_mat = make_bigram_count_mat(word_seq_mat_chunk, toy_data.x_words, toy_data.y_words)
+
+        all_x_words = []
+        all_y_words = []
+        for name, (xws, yws) in toy_data.name2words.items():
+            all_x_words.extend(xws)
+            all_y_words.extend(yws)
+        in_out_corr_mat = make_bigram_count_mat(word_seq_mat_chunk, all_x_words, all_y_words)
         if CLIPPING:
             mat2 = np.clip(in_out_corr_mat, 0, 1)
         else:

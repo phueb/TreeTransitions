@@ -112,6 +112,9 @@ def plot_ba_trajs(d1, d2, title):
     #
     ax.set_xticks(xticks)
     ax.set_xticklabels(xticks)
+    yticks = np.linspace(0.5, 1.00, 11, endpoint=True).round(2)
+    ax.set_yticks(yticks)
+    ax.set_yticklabels(yticks)
     #
     plt.tight_layout()
     plt.show()
