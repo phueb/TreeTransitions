@@ -10,7 +10,7 @@ from treetransitions.utils import to_corr_mat, calc_ba, cluster
 from treetransitions import config
 
 
-def make_sequences_chunk(num_seqs, name2words, name2legals_mat, probe_prob):
+def make_sequences_chunk(num_seqs, name2words, name2legals_mat, probe_prob, no_syn_hierarchy):
     print('Making {} sequences...'.format(num_seqs))
     chunks = []
     num_chunks = len(name2legals_mat)
@@ -18,6 +18,13 @@ def make_sequences_chunk(num_seqs, name2words, name2legals_mat, probe_prob):
     num_other_seqs = int((num_seqs - num_probe_seqs) / (num_chunks - 1))
     for name, legals_mat in name2legals_mat.items():
         xws, yws = name2words[name]
+
+        # TODO control for hierarchical structure in syntactic categories
+
+        if no_syn_hierarchy and name != 'p':
+            ones_prob = np.sum(np.clip(legals_mat, 0, 1)) / legals_mat.size
+            legals_mat = np.random.binomial(n=1, p=ones_prob, size=np.shape(legals_mat))
+
         # xw2yws
         xw2yws = {}
         assert len(xws) == len(legals_mat.T)
@@ -241,7 +248,7 @@ class ToyData:
         print(probe_prob_linspace)
         results = [pool.apply_async(
             make_sequences_chunk,
-            args=(num_seqs_in_chunk, self.name2words, self.name2legals_mat, probe_prob))
+            args=(num_seqs_in_chunk, self.name2words, self.name2legals_mat, probe_prob, self.params.no_syn_hierarchy))
             for probe_prob in probe_prob_linspace]
         chunks = []
         print('Creating sequences...')

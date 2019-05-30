@@ -7,7 +7,8 @@ class ObjectView(object):
 class Params:
     # input
     probe_probs = [[0.5, 0.25], [0.25, 0.5]]
-    syn_cats = [['v', 'a', 'd']]  # consider making this an odd number (to speedup GPU computation)
+    no_syn_hierarchy = [False]
+    syn_cats = [['v']]  # consider making this an odd number (to speedup GPU computation)
     num_contexts = [512]
     num_seqs = [5 * 10 ** 6]
     mutation_prob = [0.01]
