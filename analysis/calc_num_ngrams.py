@@ -9,11 +9,9 @@ from ludwigcluster.utils import list_all_param2vals
 NUM_CATS = 32
 
 Params.num_seqs = [1 * 10 ** 6]
-Params.num_cats_list = [[NUM_CATS]]
-Params.truncate_num_cats = [NUM_CATS]
-Params.truncate_list = [[0.5, 0.5], [1.0, 1.0]]
+Params.num_cats_list = [[32]]
 
-
+sets = []
 for param2vals in list_all_param2vals(Params, update_d={'param_name': 'test', 'job_name': 'test'}):
 
     # params
@@ -23,11 +21,21 @@ for param2vals in list_all_param2vals(Params, update_d={'param_name': 'test', 'j
 
     # toy data
     toy_data = ToyData(params)
-    probe2cat = toy_data.num_cats2probe2cat[NUM_CATS]
+    sp = tuple(params.structure_probs)
 
     # n-grams
     ngram_size = toy_data.id_sequences_mat.shape[1]
     unique_ngrams = np.unique(toy_data.id_sequences_mat, axis=0)
     num_ngrams = len(unique_ngrams)
+    sets.append(set([tuple(ngram) for ngram in unique_ngrams]))
     print('num_{}-grams={:,}'.format(ngram_size, num_ngrams))
     print('------------------------------------------------------------')
+
+
+updated_ngrams = sets[1].copy()
+print(len(updated_ngrams))
+updated_ngrams.update(sets[0])
+num_updated_ngrams = len(updated_ngrams)
+print(num_updated_ngrams)
+
+print(sets[0].issubset((sets[1])))

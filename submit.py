@@ -37,8 +37,7 @@ if __name__ == '__main__':
         Params.num_partitions = [2]
     param2val_list = list_all_param2vals(Params)
 
-    # TODO hawkins is temporarily out
-    SFTP.worker_names = ['hoff', 'norman', 'hebb', 'hinton', 'pitts', 'bengio']
+    SFTP.worker_names = SFTP.worker_names  # use this to specify workers (in case one is offline)
 
     # submit to cluster
     data_dirs = [] if not namespace.skip_data else []  # this data is copied to file server not workers

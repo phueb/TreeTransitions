@@ -53,32 +53,6 @@ def make_bigram_count_mat(word_seqs_mat, x_words, y_words):
     return res
 
 
-def plot_heatmap(mat, ytick_labels, xtick_labels,
-                 figsize=(10, 10), dpi=None, ticklabel_fs=1, title_fs=5):
-    fig, ax = plt.subplots(figsize=figsize, dpi=dpi)
-    plt.title('', fontsize=title_fs)
-    # heatmap
-    print('Plotting heatmap...')
-    ax.imshow(mat,
-              aspect='equal',
-              cmap=plt.get_cmap('jet'),
-              interpolation='nearest')
-    # xticks
-    num_cols = len(mat.T)
-    ax.set_xticks(np.arange(num_cols))
-    ax.xaxis.set_ticklabels(xtick_labels, rotation=90, fontsize=ticklabel_fs)
-    # yticks
-    num_rows = len(mat)
-    ax.set_yticks(np.arange(num_rows))
-    ax.yaxis.set_ticklabels(ytick_labels,   # no need to reverse (because no extent is set)
-                            rotation=0, fontsize=ticklabel_fs)
-    # remove ticklines
-    lines = (ax.xaxis.get_ticklines() +
-             ax.yaxis.get_ticklines())
-    plt.setp(lines, visible=False)
-    plt.show()
-
-
 for param2val in list_all_param2vals(Params, update_d={'param_name': 'test', 'job_name': 'test'}):
     params = ObjectView(param2val)
     for k, v in sorted(params.__dict__.items()):
