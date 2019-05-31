@@ -21,7 +21,7 @@ TOLERANCE = 0.05
 
 
 default_dict = MatchParams.__dict__.copy()
-MatchParams.num_contexts = [512]
+# MatchParams._ = []
 
 
 def gen_param_ps(param2requested, param2default):

@@ -24,7 +24,7 @@ def make_sequences_chunk(num_seqs, name2words, name2legals_mat, structure_prob):
         for xw, col in zip(xws, legals_mat.T):
             assert xw not in xw2yws
             xw2yws[xw] = [yw for yw, val in zip(yws, col)    # if-statement is required
-                          if val == next(legal_vals)]
+                          if val == next(legal_vals)]  # this reduces number of legal sequences, not just hierarchy
     #
     seq_size = 2
     res = np.random.choice(list(xw2yws.keys()), size=(num_seqs, seq_size))
@@ -50,12 +50,8 @@ class ToyData:
                            for n, num_non_probes in enumerate(self.params.num_non_probes_list)}
         self.name2words['p'] = (self.make_words('px', self.params.num_probes),
                                 self.make_words('py', self.params.num_contexts))
-
-        for k, v in self.name2words.items():
-            print(k, len(v[0]), len(v[1]))
-
         self.x_words = self.name2words['p'][0]  # probes
-        self.y_words = self.name2words['p'][1]  # non-probes (or context words)
+        self.y_words = self.name2words['p'][1]  # probe-contexts
         #
         self.vocab = self.make_vocab()
         self.num_vocab = len(self.vocab)  # used by rnn
@@ -114,6 +110,11 @@ class ToyData:
         res = np.zeros((len(yws), len(xws)), dtype=np.int)
         for row_id, yw in enumerate(yws):
             res[row_id, :] = self.sample_from_hierarchical_diffusion(num_total_nodes)
+        # control for hierarchical structure in non-probes legals_mat
+        if not self.params.non_probes_hierarchy and name != 'p':
+            print('Making legals_mat for "{}" words without hierarchical structure'.format(name))
+            one_prob = np.count_nonzero(np.clip(res, 0, 1)) / np.size(res)
+            res = np.random.choice([1, -1], size=np.shape(res), p=[one_prob, 1 - one_prob])
         print('Shape of "{}" legals_mat={}'.format(name, res.shape))
         return res
 
