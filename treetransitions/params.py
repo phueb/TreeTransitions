@@ -6,16 +6,16 @@ class ObjectView(object):
 
 class Params:
     # input
-    structure_probs = [[0.5, 0.5], [1.0, 1.0]]  # probability of drawing a 1 from [1, -1]; a 1 preserves hierarchy
-    syn_cats = [['v']]  # consider making this an odd number (to speedup GPU computation)
+    structure_probs = [[0.5, 1.0], [1.0, 0.5]]  # probability of drawing a 1 from [1, -1]; a 1 preserves hierarchy
+    num_non_probes_list = [[1024]]
+    num_probes = [512]  # this is also used for size of syntactic categories
     num_contexts = [512]
     num_seqs = [5 * 10 ** 6]
     mutation_prob = [0.01]
-    num_probes = [512]  # this is also used for size of syntactic categories
     num_cats_list = [[2, 4, 8, 16, 32]]
     # rnn
-    num_iterations = [40]
-    num_partitions = [1]
+    num_iterations = [20]
+    num_partitions = [2]
     rnn_type = ['srn']
     mb_size = [64]
     learning_rate = [0.03]  # 0.03-adagrad 0.3-sgd

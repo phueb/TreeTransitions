@@ -12,49 +12,48 @@ from treetransitions import config
 
 def make_sequences_chunk(num_seqs, name2words, name2legals_mat, structure_prob):
     print('Making {} sequences...'.format(num_seqs))
-    chunks = []
-    num_chunks = len(name2legals_mat)
+    # xw2yws
+    xw2yws = {}
     for name, legals_mat in name2legals_mat.items():
         xws, yws = name2words[name]
-        # xw2yws
-        xw2yws = {}
         assert len(xws) == len(legals_mat.T)
         if name == 'p':
             legal_vals = iter([1] * legals_mat.size)  # this preserves hierarchical structure of probes
         else:
             legal_vals = iter(np.random.choice([1, -1], size=legals_mat.size, p=[structure_prob, 1 - structure_prob]))
         for xw, col in zip(xws, legals_mat.T):
+            assert xw not in xw2yws
             xw2yws[xw] = [yw for yw, val in zip(yws, col)    # if-statement is required
                           if val == next(legal_vals)]
-        #
-        seq_size = 2
-        num_chunk_seqs = int(num_seqs / num_chunks)
-        print(name, num_chunk_seqs)
-        chunk = np.random.choice(xws, size=(num_chunk_seqs, seq_size))
-        for seq in chunk:
-            xw = seq[0]
-            yw = np.random.choice(xw2yws[xw], size=1, p=None).item()
-            seq[-1] = yw
-        chunks.append(chunk)
-    # stack + shuffle
-    stacked = np.vstack(chunks)
-    res = np.random.permutation(stacked)
+    #
+    seq_size = 2
+    res = np.random.choice(list(xw2yws.keys()), size=(num_seqs, seq_size))
+    for seq in res:
+        xw = seq[0]
+        yw = np.random.choice(xw2yws[xw], size=1, p=None).item()
+        seq[-1] = yw
     return res
 
 
 """
 legals_mat: 
 each row contains a vector sampled from hierarchical process.
-each column (x-word) represents which y_words are allowed to follow x_word
+each column (x-word) represents which y_words are allowed to follow the x_word
 """
 
 
 class ToyData:
     def __init__(self, params, max_ba=True, make_tokens=True):
         self.params = params
-        self.name2words = {name: (self.make_words(name + 'x', self.params.num_probes),
-                                  self.make_words(name + 'y', self.params.num_contexts))
-                           for name in self.params.syn_cats + ['p']}
+        self.name2words = {str(n): (self.make_words(str(n) + 'x', num_non_probes),
+                                    self.make_words(str(n) + 'y', self.params.num_contexts))
+                           for n, num_non_probes in enumerate(self.params.num_non_probes_list)}
+        self.name2words['p'] = (self.make_words('px', self.params.num_probes),
+                                self.make_words('py', self.params.num_contexts))
+
+        for k, v in self.name2words.items():
+            print(k, len(v[0]), len(v[1]))
+
         self.x_words = self.name2words['p'][0]  # probes
         self.y_words = self.name2words['p'][1]  # non-probes (or context words)
         #
@@ -111,9 +110,10 @@ class ToyData:
         each row contains a vector sampled from hierarchical process.
         each column represents which y_words are allowed to follow an x_word (word associated with column)
         """
+        num_total_nodes = len(self.name2words[name][0])
         res = np.zeros((len(yws), len(xws)), dtype=np.int)
         for row_id, yw in enumerate(yws):
-            res[row_id, :] = self.sample_from_hierarchical_diffusion()
+            res[row_id, :] = self.sample_from_hierarchical_diffusion(num_total_nodes)
         print('Shape of "{}" legals_mat={}'.format(name, res.shape))
         return res
 
@@ -207,7 +207,7 @@ class ToyData:
 
     # /////////////////////////////////////////////////////////////// sequences
 
-    def sample_from_hierarchical_diffusion(self):
+    def sample_from_hierarchical_diffusion(self, num_total_nodes):
         """the higher the change probability (e),
          the less variance accounted for by higher-up nodes"""
         num_descendants = 2
@@ -218,7 +218,7 @@ class ToyData:
             nodes = [node if p else -node
                      for node, p in zip(candidate_nodes,
                                         np.random.binomial(n=1, p=1 - self.params.mutation_prob, size=s))]
-            if len(nodes) >= self.params.num_probes:
+            if len(nodes) >= num_total_nodes:
                 break
         return nodes
 
