@@ -68,7 +68,7 @@ def main_job(param2val):
     max_ba_p = config.RemoteDirs.runs / param2val['param_name'] / param2val['job_name'] / 'num_cats2max_ba.csv'
     if not max_ba_p.parent.exists():
         max_ba_p.parent.mkdir(parents=True)
-    max_ba_df = pd.DataFrame(toy_data.num_cats2max_ba)
+    max_ba_df = pd.DataFrame(toy_data.num_cats2max_ba, index=[0])  # need index because values are ints not lists
     with max_ba_p.open('w', encoding='utf8') as f:
         max_ba_df.to_csv(f, index=False)
 
