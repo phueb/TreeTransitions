@@ -14,7 +14,7 @@ VERBOSE = True
 
 X_STEP = 5
 GRID = False
-PLOT_MAX_BA = False
+PLOT_MAX_BA = True
 LEGEND = True
 YLIMs = None
 TITLE_FONTSIZE = 10
@@ -72,8 +72,8 @@ def correct_artifacts(df):
     return df
 
 
-def get_results_dfs(param_p):
-    results_ps = list(param_p.glob('*num*/results.csv'))
+def get_dfs(param_p, name):
+    results_ps = list(param_p.glob('*num*/{}.csv'.format(name)))
     print('Found {} results files'.format(len(results_ps)))
     dfs = []
     for results_p in results_ps:
@@ -83,7 +83,7 @@ def get_results_dfs(param_p):
     return dfs
 
 
-def make_num_cats2bas(dfs):
+def to_dict(dfs):
     print('Combining results from {} files'.format(len(dfs)))
     concatenated = pd.concat(dfs, axis=0)
     df = concatenated.groupby(concatenated.index).mean()
@@ -119,9 +119,9 @@ def plot_ba_trajs(results):
     ax.spines['right'].set_visible(False)
     ax.spines['top'].set_visible(False)
     ax.tick_params(axis='both', which='both', top=False, right=False)
-    # ticks
+    # ticks (ba is calculated before training update, so first ba is x=0, and last x=num_ba-1)
     num_x = param2val1['num_partitions'] * param2val1['num_iterations']
-    xticks = np.arange(0, num_x + 1, X_STEP)
+    xticks = np.arange(0, num_x + X_STEP, X_STEP)
     yticks = np.linspace(0.5, 1.00, 6, endpoint=True).round(2)
     ax.set_xticks(xticks)
     ax.set_xticklabels(xticks)
@@ -147,25 +147,20 @@ def plot_ba_trajs(results):
                 ax.axhline(y=d2[num_cats], linestyle='dashed', color=c, alpha=0.5)
     if LEGEND:
         plt.legend(loc='best', frameon=False)
-    #
-    # plt.tight_layout()
     plt.show()
 
 
 def gen_results_from_disk():
     for param_p, label in gen_param_ps(MatchParams, default_dict):
-        results_dfs = get_results_dfs(param_p)
-        num_cats2bas = make_num_cats2bas(results_dfs)
-
-        # TODO test
-        if (param_p / 'num_cats2max_ba.yaml').exists():
-            with (param_p / 'num_cats2max_ba.yaml').open('r') as f:
-                num_cats2max_ba = yaml.load(f, Loader=yaml.FullLoader)
-        else:
-            num_cats2max_ba = None
+        bas_df = get_dfs(param_p, 'num_cats2bas')
+        max_ba_dfs = get_dfs(param_p, 'num_cats2max_ba')
+        num_cats2bas = to_dict(bas_df)
+        num_cats2max_ba = to_dict(max_ba_dfs)
+        num_results = len(bas_df)
+        #
         with (param_p / 'param2val.yaml').open('r') as f:
             param2val = yaml.load(f, Loader=yaml.FullLoader)
-        num_results = len(results_dfs)
+
         yield (num_cats2bas, num_cats2max_ba, param2val, num_results)
 
 

@@ -13,7 +13,6 @@ from treetransitions import config
 
 def main_job(param2val):
     # check if host is down - do this before any computation
-    results_p = config.RemoteDirs.runs / param2val['param_name'] / param2val['job_name'] / 'results.csv'
     assert config.RemoteDirs.runs.exists()    # this throws error if host is down
 
     # params
@@ -58,18 +57,20 @@ def main_job(param2val):
             srn.train_partition(part_id_seqs, verbose=False)  # a seq is a window (e.g. a bi-gram)
 
     #  save results to shared drive
-    if not results_p.parent.exists():
-        results_p.parent.mkdir(parents=True)
-    traj_df = pd.DataFrame(num_cats2bas)
-    with results_p.open('w') as f:
-        traj_df.to_csv(f, index=False)
+    bas_p = config.RemoteDirs.runs / param2val['param_name'] / param2val['job_name'] / 'num_cats2bas.csv'
+    if not bas_p.parent.exists():
+        bas_p.parent.mkdir(parents=True)
+    bas_df = pd.DataFrame(num_cats2bas)
+    with bas_p.open('w') as f:
+        bas_df.to_csv(f, index=False)
 
     # write num_cats2max_ba to shared drive
-    num_cats2max_ba_p = config.RemoteDirs.runs / param2val['param_name'] / 'num_cats2max_ba.yaml'
-    if not num_cats2max_ba_p.parent.exists():
-        num_cats2max_ba_p.parent.mkdir(parents=True)
-    with num_cats2max_ba_p.open('w', encoding='utf8') as f:
-        yaml.dump(toy_data.num_cats2max_ba, f, default_flow_style=False, allow_unicode=True)
+    max_ba_p = config.RemoteDirs.runs / param2val['param_name'] / param2val['job_name'] / 'num_cats2max_ba.csv'
+    if not max_ba_p.parent.exists():
+        max_ba_p.parent.mkdir(parents=True)
+    max_ba_df = pd.DataFrame(toy_data.num_cats2max_ba)
+    with max_ba_p.open('w', encoding='utf8') as f:
+        max_ba_df.to_csv(f, index=False)
 
     # write param2val to shared drive
     param2val_p = config.RemoteDirs.runs / param2val['param_name'] / 'param2val.yaml'
