@@ -8,9 +8,9 @@ class Params:
     # input
     non_probes_hierarchy = [False]
     structure_probs = [[0.5, 1.0], [1.0, 0.5]]  # probability of drawing a 1 from [1, -1]; a 1 preserves hierarchy
-    num_non_probes_list = [[1024]]  # there can be multiple non-probe categories
+    num_non_probes_list = [[512, 512, 512]]  # there can be multiple non-probe categories
     num_probes = [512]
-    num_contexts = [256]
+    num_contexts = [512]
     num_seqs = [5 * 10 ** 6]
     mutation_prob = [0.01]
     num_cats_list = [[2, 4, 8, 16, 32]]

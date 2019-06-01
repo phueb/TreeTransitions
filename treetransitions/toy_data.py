@@ -110,6 +110,8 @@ class ToyData:
         res = np.zeros((len(yws), len(xws)), dtype=np.int)
         for row_id, yw in enumerate(yws):
             res[row_id, :] = self.sample_from_hierarchical_diffusion(num_total_nodes)
+        one_prob = np.count_nonzero(np.clip(res, 0, 1)) / np.size(res)
+        print('Probability of +1 in legals_mat={}'.format(one_prob))
         # control for hierarchical structure in non-probes legals_mat
         if not self.params.non_probes_hierarchy and name != 'p':
             print('Making legals_mat for "{}" words without hierarchical structure'.format(name))

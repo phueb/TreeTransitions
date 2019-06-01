@@ -22,7 +22,7 @@ def main_job(param2val):
         print('{}={}'.format(k, v))
     print()
 
-    toy_data = ToyData(params, max_ba=False)
+    toy_data = ToyData(params, max_ba=True)  # True to enable plotting of max_ba
 
     # train loop
     srn = RNN(toy_data.num_vocab, params)
@@ -57,12 +57,19 @@ def main_job(param2val):
             # train
             srn.train_partition(part_id_seqs, verbose=False)  # a seq is a window (e.g. a bi-gram)
 
-    #  save results to disk
+    #  save results to shared drive
     if not results_p.parent.exists():
         results_p.parent.mkdir(parents=True)
     traj_df = pd.DataFrame(num_cats2bas)
     with results_p.open('w') as f:
         traj_df.to_csv(f, index=False)
+
+    # write num_cats2max_ba to shared drive
+    num_cats2max_ba_p = config.RemoteDirs.runs / param2val['param_name'] / 'num_cats2max_ba.yaml'
+    if not num_cats2max_ba_p.parent.exists():
+        num_cats2max_ba_p.parent.mkdir(parents=True)
+    with num_cats2max_ba_p.open('w', encoding='utf8') as f:
+        yaml.dump(toy_data.num_cats2max_ba, f, default_flow_style=False, allow_unicode=True)
 
     # write param2val to shared drive
     param2val_p = config.RemoteDirs.runs / param2val['param_name'] / 'param2val.yaml'
