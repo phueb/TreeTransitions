@@ -1,4 +1,3 @@
-
 class ObjectView(object):
     def __init__(self, d):
         self.__dict__ = d
@@ -6,8 +5,10 @@ class ObjectView(object):
 
 class Params:
     # input
+    legals_mat_seed = [42]  # TODO test
+    corpus_seed = [42]  # TODO test - do i also need a seed for branching diffusion?
     non_probes_hierarchy = [False]
-    structure_probs = [[0.5, 1.0], [1.0, 0.5]]  # probability of drawing a 1 from [1, -1]; a 1 preserves hierarchy
+    structure_probs = [[1.0, 1.0], [0.5, 1.0]]  # probability of drawing a 1 from [1, -1]; a 1 preserves hierarchy
     num_non_probes_list = [[1024, 1024]]  # there can be multiple non-probe categories
     num_probes = [512]
     num_contexts = [128]

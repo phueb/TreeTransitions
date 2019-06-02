@@ -10,6 +10,7 @@ NUM_CATS = 32
 
 Params.num_seqs = [1 * 10 ** 6]
 Params.num_cats_list = [[32]]
+Params.structure_probs = [[1.0, 1.0], [1.0, 1.0], [0.5, 0.5]]
 
 sets = []
 for param2vals in list_all_param2vals(Params, update_d={'param_name': 'test', 'job_name': 'test'}):
@@ -17,7 +18,7 @@ for param2vals in list_all_param2vals(Params, update_d={'param_name': 'test', 'j
     # params
     params = ObjectView(param2vals)
     for k, v in sorted(params.__dict__.items()):
-        print(k, v)
+        print('{}={}'.format(k, v))
 
     # toy data
     toy_data = ToyData(params)
@@ -33,9 +34,6 @@ for param2vals in list_all_param2vals(Params, update_d={'param_name': 'test', 'j
 
 
 updated_ngrams = sets[1].copy()
-print(len(updated_ngrams))
 updated_ngrams.update(sets[0])
 num_updated_ngrams = len(updated_ngrams)
 print(num_updated_ngrams)
-
-print(sets[0].issubset((sets[1])))

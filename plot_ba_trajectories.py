@@ -4,6 +4,7 @@ import seaborn as sns
 import pandas as pd
 import numpy as np
 from itertools import combinations
+from scipy import stats
 
 from ludwigcluster.utils import list_all_param2vals
 from treetransitions import config
@@ -12,18 +13,21 @@ from treetransitions.params import Params as MatchParams
 
 VERBOSE = True
 
+Y_MAX = 0.85
 X_STEP = 5
 GRID = False
-PLOT_MAX_BA = True
+PLOT_MAX_BA = False
 LEGEND = True
 YLIMs = None
 TITLE_FONTSIZE = 10
-PLOT_NUM_CATS_LIST = [2, 4, 8, 16, 32, 64]
+PLOT_NUM_CATS_LIST = [2, 4, 8, 16, 32]
 TOLERANCE = 0.05
+PLOT_COMPARISON = False
+CONFIDENCE = 0.95
 
 
 default_dict = MatchParams.__dict__.copy()
-# MatchParams._ = []
+# MatchParams.structure_probs = [[1.0, 1.0], [0.5, 1.0]]
 
 
 def gen_param_ps(param2requested, param2default):
@@ -78,15 +82,20 @@ def get_dfs(param_p, name):
     dfs = []
     for results_p in results_ps:
         with results_p.open('rb') as f:
-            df = correct_artifacts(pd.read_csv(f))
+            try:
+                df = correct_artifacts(pd.read_csv(f))
+            except pd.errors.EmptyDataError:
+                print('{} is empty. Skipping'.format(results_p.name))
+                return []
         dfs.append(df)
     return dfs
 
 
-def to_dict(dfs):
+def to_dict(dfs, sem):
     print('Combining results from {} files'.format(len(dfs)))
     concatenated = pd.concat(dfs, axis=0)
-    df = concatenated.groupby(concatenated.index).mean()
+    grouped = concatenated.groupby(concatenated.index)
+    df = grouped.mean() if not sem else grouped.agg(stats.sem)
     res = df.to_dict(orient='list')
     res = {int(k): v for k, v in res.items()}  # convert key to int - to be able to sort
     return res
@@ -95,27 +104,31 @@ def to_dict(dfs):
 def plot_ba_trajs(results):
     # read results
     if len(results) == 1:
-        num_cats2bas1, num_cats2max_ba1, param2val1, num_results1 = results[0]
+        num_cats2ba_means1, num_cats2ba_sems1, num_cats2max_ba1, param2val1, num_results1 = results[0]
         title = make_title(param2val1) + '\nn={}'.format(num_results1)
-        d1s = [num_cats2bas1]
-        d2s = [num_cats2max_ba1]
+        d1s = [num_cats2ba_means1]
+        d2s = [num_cats2ba_sems1]
+        d3s = [num_cats2max_ba1]
+        dofs = [num_results1 - 1]
         figsize = (10, 10)
     elif len(results) == 2:
-        num_cats2bas1, num_cats2max_ba1, param2val1, num_results1 = results[0]
-        num_cats2bas2, num_cats2max_ba2, param2val2, num_results2 = results[1]
+        num_cats2ba_means1, num_cats2ba_sems1, num_cats2max_ba1, param2val1, num_results1 = results[0]
+        num_cats2ba_means2, num_cats2ba_sems2, num_cats2max_ba2, param2val2, num_results2 = results[1]
         title = make_comparison_title(param2val1, param2val2) + '\nn={}'.format(min(num_results1, num_results2))
         assert param2val1['num_partitions'] == param2val2['num_partitions']
         assert param2val1['num_iterations'] == param2val2['num_iterations']
-        d1s = [num_cats2bas1, num_cats2bas2]
-        d2s = [num_cats2max_ba1, num_cats2max_ba2]
-        figsize = (10, 5)
+        d1s = [num_cats2ba_means1, num_cats2ba_means2]
+        d2s = [num_cats2ba_sems1, num_cats2ba_sems2]
+        d3s = [num_cats2max_ba1, num_cats2max_ba2]
+        dofs = [num_results1 - 1, num_results2 - 1]
+        figsize = (10, 8)
     else:
         raise ValueError('"results" cannot contain more than 2 entries.')
     # fig
     fig, ax = plt.subplots(figsize=figsize, dpi=None)
     plt.title(title, fontsize=TITLE_FONTSIZE)
     ax.set_xlabel('Iteration')
-    ax.set_ylabel('Balanced Accuracy')
+    ax.set_ylabel('Balanced Accuracy +/- {}-Conf. Interval'.format(CONFIDENCE))
     ax.spines['right'].set_visible(False)
     ax.spines['top'].set_visible(False)
     ax.tick_params(axis='both', which='both', top=False, right=False)
@@ -127,24 +140,38 @@ def plot_ba_trajs(results):
     ax.set_xticklabels(xticks)
     ax.set_yticks(yticks)
     ax.set_yticklabels(yticks)
-    ax.set_ylim([0.5, 1.01])
+    ax.set_ylim([0.5, Y_MAX])
     ax.set_xlim([0, xticks[-1]])
     if GRID:
         ax.yaxis.grid(True)
         ax.xaxis.grid(True)
     # plot
-    for n, (d1, d2) in enumerate(zip(d1s, d2s)):
+    x = np.arange(num_x)
+    for n, (d1, d2, d3, dof) in enumerate(zip(d1s, d2s, d3s, dofs)):
         num_trajs = len(d1)
         palette = iter(sns.color_palette('hls', num_trajs))
-        for num_cats, bas in sorted(d1.items(), key=lambda i: i[0]):
-            if num_cats not in PLOT_NUM_CATS_LIST:
-                continue
+        for num_cats in PLOT_NUM_CATS_LIST:
             c = next(palette)
-            ax.plot(bas, color=c,
+            # ba mean
+            ba_means = np.asarray(d1[num_cats])
+            ax.plot(x, ba_means, color=c,
                     label='num_cats={}'.format(num_cats) if n == 0 else '_nolegend_',
                     linestyle='-' if n == 0 else ':')
-            if d2 is not None and PLOT_MAX_BA:
-                ax.axhline(y=d2[num_cats], linestyle='dashed', color=c, alpha=0.5)
+
+            # TODO show confidence interval not std
+
+
+            # ba conf_int
+            ba_sems = np.asarray(d2[num_cats])
+            q = (1 - CONFIDENCE) / 2.
+            margins = ba_sems * stats.t.ppf(q, dof)
+
+            print(margins)
+
+            ax.fill_between(x, ba_means - margins, ba_means + margins, color=c, alpha=0.2)
+            # max_ba
+            if d3 is not None and PLOT_MAX_BA:
+                ax.axhline(y=d3[num_cats], linestyle='dashed', color=c, alpha=0.5)
     if LEGEND:
         plt.legend(loc='best', frameon=False)
     plt.show()
@@ -154,26 +181,28 @@ def gen_results_from_disk():
     for param_p, label in gen_param_ps(MatchParams, default_dict):
         bas_df = get_dfs(param_p, 'num_cats2bas')
         max_ba_dfs = get_dfs(param_p, 'num_cats2max_ba')
-        num_cats2bas = to_dict(bas_df)
-        num_cats2max_ba = to_dict(max_ba_dfs)
+        num_cats2ba_means = to_dict(bas_df, sem=False)
+        num_cats2ba_sems = to_dict(bas_df, sem=True)
+        num_cats2max_ba = to_dict(max_ba_dfs, sem=False) if max_ba_dfs else None
         num_results = len(bas_df)
         #
         with (param_p / 'param2val.yaml').open('r') as f:
             param2val = yaml.load(f, Loader=yaml.FullLoader)
 
-        yield (num_cats2bas, num_cats2max_ba, param2val, num_results)
+        yield (num_cats2ba_means, num_cats2ba_sems, num_cats2max_ba, param2val, num_results)
 
 
 if __name__ == '__main__':
     all_results = list(gen_results_from_disk())
 
-    # plot each single result
-    for single_result in all_results:
-        plot_ba_trajs([single_result])
-
-    # plot each result pair
-    for results_pair in combinations(all_results, 2):
-        plot_ba_trajs(results_pair)
+    if not PLOT_COMPARISON:
+        # plot each single result
+        for single_result in all_results:
+            plot_ba_trajs([single_result])
+    else:
+        # plot each result pair
+        for results_pair in combinations(all_results, 2):
+            plot_ba_trajs(results_pair)
 
 
 

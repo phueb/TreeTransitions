@@ -5,15 +5,17 @@ import multiprocessing as mp
 from cytoolz import itertoolz
 from matplotlib.colors import to_hex
 from sklearn.metrics.pairwise import cosine_similarity
+from sortedcontainers import SortedDict
 
 from treetransitions.utils import to_corr_mat, calc_ba, cluster
 from treetransitions import config
 
 
-def make_sequences_chunk(num_seqs, name2words, name2legals_mat, structure_prob):
-    print('Making {} sequences...'.format(num_seqs))
+def make_sequences_chunk(num_seqs, name2words, name2legals_mat, structure_prob, corpus_seed):
+    np.random.seed(corpus_seed)
+    print('Making {} sequences with random seed={}...'.format(num_seqs, corpus_seed))
     # xw2yws
-    xw2yws = {}
+    xw2yws = SortedDict()
     for name, legals_mat in name2legals_mat.items():
         xws, yws = name2words[name]
         assert len(xws) == len(legals_mat.T)
@@ -26,12 +28,16 @@ def make_sequences_chunk(num_seqs, name2words, name2legals_mat, structure_prob):
             xw2yws[xw] = [yw for yw, val in zip(yws, col)    # if-statement is required
                           if val == next(legal_vals)]  # this reduces number of legal sequences, not just hierarchy
     #
+    num_legals = np.concatenate([values for values in xw2yws.values()]).size
+    print('number of legal sequences={:,}'.format(num_legals))
+    #
     seq_size = 2
-    res = np.random.choice(list(xw2yws.keys()), size=(num_seqs, seq_size))
+    res = np.random.choice(xw2yws.keys(), size=(num_seqs, seq_size))
     for seq in res:
         xw = seq[0]
         yw = np.random.choice(xw2yws[xw], size=1, p=None).item()
         seq[-1] = yw
+    np.random.seed(None)
     return res
 
 
@@ -45,9 +51,10 @@ each column (x-word) represents which y_words are allowed to follow the x_word
 class ToyData:
     def __init__(self, params, max_ba=True, make_tokens=True):
         self.params = params
-        self.name2words = {str(n): (self.make_words(str(n) + 'x', num_non_probes),
-                                    self.make_words(str(n) + 'y', self.params.num_contexts))
-                           for n, num_non_probes in enumerate(self.params.num_non_probes_list)}
+        # use SortedDict to prevent non-deterministic corpus generation
+        self.name2words = SortedDict({str(n): (self.make_words(str(n) + 'x', num_non_probes),
+                                               self.make_words(str(n) + 'y', self.params.num_contexts))
+                                      for n, num_non_probes in enumerate(self.params.num_non_probes_list)})
         self.name2words['p'] = (self.make_words('px', self.params.num_probes),
                                 self.make_words('py', self.params.num_contexts))
         self.x_words = self.name2words['p'][0]  # probes
@@ -57,8 +64,8 @@ class ToyData:
         self.num_vocab = len(self.vocab)  # used by rnn
         self.word2id = {word: n for n, word in enumerate(self.vocab)}
         #
-        self.name2legals_mat = {name: self.make_legals_mat(name, xws, yws)
-                                for name, (xws, yws) in self.name2words.items()}
+        self.name2legals_mat = SortedDict({name: self.make_legals_mat(name, xws, yws)
+                                           for name, (xws, yws) in self.name2words.items()})
         self.probes_legals_mat = self.name2legals_mat['p']
         #
         self.z = self.make_z()
@@ -106,18 +113,19 @@ class ToyData:
         each row contains a vector sampled from hierarchical process.
         each column represents which y_words are allowed to follow an x_word (word associated with column)
         """
+        np.random.seed(int(name) if name != 'p' else self.params.corpus_seed)
         num_total_nodes = len(self.name2words[name][0])
         res = np.zeros((len(yws), len(xws)), dtype=np.int)
         for row_id, yw in enumerate(yws):
             res[row_id, :] = self.sample_from_hierarchical_diffusion(num_total_nodes)
         one_prob = np.count_nonzero(np.clip(res, 0, 1)) / np.size(res)
-        print('Probability of +1 in legals_mat={}'.format(one_prob))
         # control for hierarchical structure in non-probes legals_mat
         if not self.params.non_probes_hierarchy and name != 'p':
             print('Making legals_mat for "{}" words without hierarchical structure'.format(name))
-            one_prob = np.count_nonzero(np.clip(res, 0, 1)) / np.size(res)
             res = np.random.choice([1, -1], size=np.shape(res), p=[one_prob, 1 - one_prob])
-        print('Shape of "{}" legals_mat={}'.format(name, res.shape))
+            print(res)
+        print('"{}" legals_mat: shape={} probability of +1={}'.format(name, res.shape, one_prob))
+        np.random.seed(None)
         return res
 
     def plot_heatmap(self, mat, name):
@@ -248,7 +256,7 @@ class ToyData:
         print(linspace)
         results = [pool.apply_async(
             make_sequences_chunk,
-            args=(num_seqs_in_chunk, self.name2words, self.name2legals_mat, structure_prob))
+            args=(num_seqs_in_chunk, self.name2words, self.name2legals_mat, structure_prob, self.params.corpus_seed))
             for structure_prob in linspace]
         chunks = []
         print('Creating sequences...')
