@@ -20,14 +20,14 @@ PLOT_MAX_BA = False
 LEGEND = True
 YLIMs = None
 TITLE_FONTSIZE = 10
-PLOT_NUM_CATS_LIST = [2, 4, 8, 16, 32]
+PLOT_NUM_CATS_LIST = [32]
 TOLERANCE = 0.05
 PLOT_COMPARISON = False
-CONFIDENCE = 0.95
+CONFIDENCE = 0.90
 
 
 default_dict = MatchParams.__dict__.copy()
-# MatchParams.structure_probs = [[1.0, 1.0], [0.5, 1.0]]
+# MatchParams.legal_probs = [[1.0, 1.0], [0.5, 1.0]]
 
 
 def gen_param_ps(param2requested, param2default):
@@ -128,7 +128,7 @@ def plot_ba_trajs(results):
     fig, ax = plt.subplots(figsize=figsize, dpi=None)
     plt.title(title, fontsize=TITLE_FONTSIZE)
     ax.set_xlabel('Iteration')
-    ax.set_ylabel('Balanced Accuracy +/- {}-Conf. Interval'.format(CONFIDENCE))
+    ax.set_ylabel('Balanced Accuracy +/- {}%-Confidence Interval'.format(CONFIDENCE * 100))
     ax.spines['right'].set_visible(False)
     ax.spines['top'].set_visible(False)
     ax.tick_params(axis='both', which='both', top=False, right=False)
@@ -158,16 +158,13 @@ def plot_ba_trajs(results):
                     label='num_cats={}'.format(num_cats) if n == 0 else '_nolegend_',
                     linestyle='-' if n == 0 else ':')
 
-            # TODO show confidence interval not std
-
+            # TODO test conf int
+            # dof = 20
 
             # ba conf_int
             ba_sems = np.asarray(d2[num_cats])
             q = (1 - CONFIDENCE) / 2.
             margins = ba_sems * stats.t.ppf(q, dof)
-
-            print(margins)
-
             ax.fill_between(x, ba_means - margins, ba_means + margins, color=c, alpha=0.2)
             # max_ba
             if d3 is not None and PLOT_MAX_BA:

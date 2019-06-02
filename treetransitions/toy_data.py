@@ -11,23 +11,21 @@ from treetransitions.utils import to_corr_mat, calc_ba, cluster
 from treetransitions import config
 
 
-def make_sequences_chunk(num_seqs, name2words, name2legals_mat, structure_prob, corpus_seed):
-    np.random.seed(corpus_seed)
-    print('Making {} sequences with random seed={}...'.format(num_seqs, corpus_seed))
+def make_sequences_chunk(num_seqs, name2words, name2legals_mat, legal_prob):
+    np.random.seed(config.Seed.legals)
+    print('Making {} sequences...'.format(num_seqs))
     # xw2yws
     xw2yws = SortedDict()
     for name, legals_mat in name2legals_mat.items():
         xws, yws = name2words[name]
-        assert len(xws) == len(legals_mat.T)
-        if name == 'p':
-            legal_vals = iter([1] * legals_mat.size)  # this preserves hierarchical structure of probes
-        else:
-            legal_vals = iter(np.random.choice([1, -1], size=legals_mat.size, p=[structure_prob, 1 - structure_prob]))
+        legal_prob_adj = 1.0 if name == 'p' else legal_prob  # this is important - do not change structure of probes
         for xw, col in zip(xws, legals_mat.T):
             assert xw not in xw2yws
-            xw2yws[xw] = [yw for yw, val in zip(yws, col)    # if-statement is required
-                          if val == next(legal_vals)]  # this reduces number of legal sequences, not just hierarchy
+            xw2yws[xw] = [yw for yw, val in zip(yws, col)
+                          if val == 1 and bool(np.random.binomial(n=1, p=legal_prob_adj, size=1).item())]
+            # this reduces number of legal sequences, not just hierarchical structure
     #
+    np.random.seed(config.Seed.sampling)
     num_legals = np.concatenate([values for values in xw2yws.values()]).size
     print('number of legal sequences={:,}'.format(num_legals))
     #
@@ -66,6 +64,7 @@ class ToyData:
         #
         self.name2legals_mat = SortedDict({name: self.make_legals_mat(name, xws, yws)
                                            for name, (xws, yws) in self.name2words.items()})
+        self.print_legals_info()
         self.probes_legals_mat = self.name2legals_mat['p']
         #
         self.z = self.make_z()
@@ -113,7 +112,7 @@ class ToyData:
         each row contains a vector sampled from hierarchical process.
         each column represents which y_words are allowed to follow an x_word (word associated with column)
         """
-        np.random.seed(int(name) if name != 'p' else self.params.corpus_seed)
+        np.random.seed(int(name) if name != 'p' else config.Seed.branching_diffusion)
         num_total_nodes = len(self.name2words[name][0])
         res = np.zeros((len(yws), len(xws)), dtype=np.int)
         for row_id, yw in enumerate(yws):
@@ -123,10 +122,15 @@ class ToyData:
         if not self.params.non_probes_hierarchy and name != 'p':
             print('Making legals_mat for "{}" words without hierarchical structure'.format(name))
             res = np.random.choice([1, -1], size=np.shape(res), p=[one_prob, 1 - one_prob])
-            print(res)
-        print('"{}" legals_mat: shape={} probability of +1={}'.format(name, res.shape, one_prob))
+        print('"{}" legals_mat: probability of +1={:.2f} shape={} '.format(name, one_prob, res.shape))
         np.random.seed(None)
         return res
+
+    def print_legals_info(self):
+        super_mat = np.hstack([mat for mat in self.name2legals_mat.values()])
+        num_legal = np.count_nonzero(np.clip(super_mat, 0, 1))
+        print('Maximum number of sequences possible={:,}'.format(super_mat.size))
+        print('Number of sequences specified by legals_mats={:,}'.format(num_legal))
 
     def plot_heatmap(self, mat, name):
         fig, ax = plt.subplots(figsize=(8, 8), dpi=None)
@@ -250,14 +254,14 @@ class ToyData:
         num_chunks = self.params.num_partitions * num_processes
         num_seqs_in_chunk = self.params.num_seqs // num_chunks
         linspace = np.repeat(
-            np.linspace(*self.params.structure_probs, self.params.num_partitions, endpoint=True),
+            np.linspace(*self.params.legal_probs, self.params.num_partitions, endpoint=True),
             num_processes).round(2)
         print('linspace:')
         print(linspace)
         results = [pool.apply_async(
             make_sequences_chunk,
-            args=(num_seqs_in_chunk, self.name2words, self.name2legals_mat, structure_prob, self.params.corpus_seed))
-            for structure_prob in linspace]
+            args=(num_seqs_in_chunk, self.name2words, self.name2legals_mat, legal_prob))
+            for legal_prob in linspace]
         chunks = []
         print('Creating sequences...')
         try:

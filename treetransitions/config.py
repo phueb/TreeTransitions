@@ -21,15 +21,14 @@ class Eval:
     num_processes = 4
     plot_tree = False
     plot_legals_mat = False
-    plot_corr_mat = False
+    plot_corr_mat = True
 
 
 class Graph:
     device = 'gpu'
 
 
-class Figs:
-    lw = 2
-    axlabel_fs = 16
-    leg_fs = 16
-    dpi = None
+class Seed:
+    branching_diffusion = 10
+    legals = 11
+    sampling = 12

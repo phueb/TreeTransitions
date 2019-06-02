@@ -21,7 +21,7 @@ CLIPPING = False
 Params.mutation_prob = [0.01]
 Params.num_seqs = [1 * 10 ** 6]
 Params.num_partitions = [2]
-Params.structure_probs = [[0.5, 1.0]]
+Params.legal_probs = [[0.5, 1.0]]
 
 
 def plot_comparison(ys, params):
@@ -34,7 +34,7 @@ def plot_comparison(ys, params):
     ax.tick_params(axis='both', which='both', top=False, right=False)
     # ax.set_ylim([0, 14])
     # plot
-    labels = iter(['structure probability={}'.format(sp) for sp in params.structure_probs])
+    labels = iter(['legal probability={}'.format(sp) for sp in params.legal_probs])
     for n, y in enumerate(ys):
         ax.plot(y, label=next(labels) or 'partition {}'.format(n + 1), linewidth=2)
     ax.legend(loc='upper right', frameon=False, fontsize=LEG_FONTSIZE)

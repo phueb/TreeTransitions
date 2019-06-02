@@ -18,7 +18,7 @@ NUM_CATS = 32
 
 Params.num_seqs = [1 * 10 ** 6]
 Params.num_cats_list = [[NUM_CATS]]
-Params.structure_probs = [[0.5, 0.5], [1.0, 1.0]]
+Params.legal_probs = [[0.5, 0.5], [1.0, 1.0]]
 
 
 def calc_ba_from_sequences_chunk(seqs_chunk, d):
@@ -57,8 +57,8 @@ def plot_ba_trajs(tr2y, x, title):
     plt.show()
 
 
-sp2bas = {tuple(sp): [0.5] for sp in Params.structure_probs}
-sp2num_windows = {tuple(sp): [0] for sp in Params.structure_probs}
+sp2bas = {tuple(sp): [0.5] for sp in Params.legal_probs}
+sp2num_windows = {tuple(sp): [0] for sp in Params.legal_probs}
 for param2vals in list_all_param2vals(Params, update_d={'param_name': 'test', 'job_name': 'test'}):
 
     # params
@@ -66,7 +66,7 @@ for param2vals in list_all_param2vals(Params, update_d={'param_name': 'test', 'j
     for k, v in sorted(params.__dict__.items()):
         print(k, v)
 
-    sp = tuple(params.structure_probs)
+    sp = tuple(params.legal_probs)
 
     # toy data
     toy_data = ToyData(params, max_ba=False)
@@ -88,4 +88,4 @@ for param2vals in list_all_param2vals(Params, update_d={'param_name': 'test', 'j
 # plot
 plot_ba_trajs(sp2bas, sp2num_windows[sp],
               title='model=bag-of-words\n'
-                    'structure_probs={}'.format(Params.structure_probs))
+                    'legal_probs={}'.format(Params.legal_probs))
