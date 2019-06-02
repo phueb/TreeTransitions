@@ -267,10 +267,9 @@ class ToyData:
         try:
             for n, r in enumerate(results):
                 chunk = r.get()
-
-                # TODO are chunks identical?
-                print(chunk[:10])
-
+                # check that chunks are not identical (can happen if random seeds are identical)
+                for c in chunks:
+                    assert not np.array_equal(c, chunk)
                 print('num probes in chunk={}'.format(len([w for w in chunk[:, 0] if w in self.x_words])))
                 chunks.append(chunk)
             pool.close()
