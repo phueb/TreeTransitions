@@ -8,7 +8,7 @@ from ludwigcluster.utils import list_all_param2vals
 
 NUM_CATS = 32
 
-Params.num_seqs = [5 * 10 ** 6]
+Params.num_seqs = [3 * 10 ** 6]
 Params.num_cats_list = [[32]]
 Params.legal_probs = [[1.0, 1.0], [0.5, 0.5]]
 
@@ -42,3 +42,7 @@ print(num_updated_ngrams)
 
 print('is second set of n-grams a subset of first set?')
 print(sets[1].issubset((sets[0])))
+
+print('num bi-grams in second also in first:')
+print(len([ngram for ngram in sets[1] if ngram in sets[0]]))
+print()

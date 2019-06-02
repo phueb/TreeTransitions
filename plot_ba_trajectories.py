@@ -13,17 +13,17 @@ from treetransitions.params import Params as MatchParams
 
 VERBOSE = True
 
-Y_MAX = 0.85
+Y_MAX = 1.0
 X_STEP = 5
 GRID = False
 PLOT_MAX_BA = False
 LEGEND = True
 YLIMs = None
 TITLE_FONTSIZE = 10
-PLOT_NUM_CATS_LIST = [32]
+PLOT_NUM_CATS_LIST = [2, 4, 8, 16, 32]
 TOLERANCE = 0.05
-PLOT_COMPARISON = False
-CONFIDENCE = 0.90
+PLOT_COMPARISON = True
+CONFIDENCE = 0.95
 
 
 default_dict = MatchParams.__dict__.copy()
@@ -185,6 +185,8 @@ def gen_results_from_disk():
         #
         with (param_p / 'param2val.yaml').open('r') as f:
             param2val = yaml.load(f, Loader=yaml.FullLoader)
+
+        print(param2val['legal_probs'])
 
         yield (num_cats2ba_means, num_cats2ba_sems, num_cats2max_ba, param2val, num_results)
 

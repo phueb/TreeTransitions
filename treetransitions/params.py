@@ -6,7 +6,7 @@ class ObjectView(object):
 class Params:
     # input
     non_probes_hierarchy = [False]
-    legal_probs = [[1.0, 1.0], [0.5, 1.0]]  # probability of drawing a 1 from [1, -1]; a 1 preserves hierarchy
+    legal_probs = [[1.0, 1.0], [0.5, 0.5], [0.5, 1.0]]  # probability of legal sequence being counted as legal
     num_non_probes_list = [[1024]]  # there can be multiple non-probe categories
     num_probes = [512]
     num_contexts = [128]  # a smaller number reduces category structure of probes

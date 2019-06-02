@@ -11,7 +11,7 @@ from treetransitions.utils import to_corr_mat, calc_ba, cluster
 from treetransitions import config
 
 
-def make_sequences_chunk(num_seqs, name2words, name2legals_mat, legal_prob):
+def make_sequences_chunk(num_seqs, name2words, name2legals_mat, legal_prob, n):
     np.random.seed(config.Seed.legals)
     print('Making {} sequences...'.format(num_seqs))
     # xw2yws
@@ -25,7 +25,7 @@ def make_sequences_chunk(num_seqs, name2words, name2legals_mat, legal_prob):
                           if val == 1 and bool(np.random.binomial(n=1, p=legal_prob_adj, size=1).item())]
             # this reduces number of legal sequences, not just hierarchical structure
     #
-    np.random.seed(config.Seed.sampling)
+    np.random.seed(config.Seed.sampling + n)  # without n, each chunk would be identical
     num_legals = np.concatenate([values for values in xw2yws.values()]).size
     print('number of legal sequences={:,}'.format(num_legals))
     #
@@ -260,15 +260,18 @@ class ToyData:
         print(linspace)
         results = [pool.apply_async(
             make_sequences_chunk,
-            args=(num_seqs_in_chunk, self.name2words, self.name2legals_mat, legal_prob))
-            for legal_prob in linspace]
+            args=(num_seqs_in_chunk, self.name2words, self.name2legals_mat, legal_prob, n))
+            for n, legal_prob in enumerate(linspace)]
         chunks = []
         print('Creating sequences...')
         try:
             for n, r in enumerate(results):
                 chunk = r.get()
-                if n % num_processes == 0:
-                    print('num probes in chunk={}'.format(len([w for w in chunk[:, 0] if w in self.x_words])))
+
+                # TODO are chunks identical?
+                print(chunk[:10])
+
+                print('num probes in chunk={}'.format(len([w for w in chunk[:, 0] if w in self.x_words])))
                 chunks.append(chunk)
             pool.close()
         except KeyboardInterrupt:

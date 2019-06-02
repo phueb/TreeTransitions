@@ -21,12 +21,13 @@ def main_job(param2val):
         print('{}={}'.format(k, v))
     print()
 
-    toy_data = ToyData(params, max_ba=True)  # True to enable plotting of max_ba
+    toy_data = ToyData(params, max_ba=False if config.Eval.debug else True)  # True to enable plotting of max_ba
 
     # train loop
     srn = RNN(toy_data.num_vocab, params)
     num_cats2bas = {num_cats: [] for num_cats in params.num_cats_list}
     for part_id, part_id_seqs in enumerate(toy_data.gen_part_id_seqs()):
+
         print('num part_id_seqs in partition={}'.format(len(part_id_seqs)))
         # perplexity
         pp = srn.calc_seqs_pp(part_id_seqs) if config.Eval.calc_pp else 0
