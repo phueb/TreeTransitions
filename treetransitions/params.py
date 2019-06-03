@@ -6,16 +6,16 @@ class ObjectView(object):
 class Params:
     # input
     non_probes_hierarchy = [False]
-    legal_probs = [[1.0, 1.0], [0.5, 0.5], [0.5, 1.0]]  # probability of legal sequence being counted as legal
-    num_non_probes_list = [[1024]]  # there can be multiple non-probe categories
+    legal_probs = [[0.5, 1.0], [1.0, 1.0]]  # probability of legal sequence being counted as legal
+    num_non_probes_list = [[1024, 1024]]  # there can be multiple non-probe categories
     num_probes = [512]
     num_contexts = [128]  # a smaller number reduces category structure of probes
     num_seqs = [5 * 10 ** 6]
-    mutation_prob = [0.03]
+    mutation_prob = [0.01]
     num_cats_list = [[2, 4, 8, 16, 32]]
     # rnn
-    num_iterations = [20]
-    num_partitions = [2]
+    num_iterations = [2]  # TODO test gradual
+    num_partitions = [20]
     rnn_type = ['srn']
     mb_size = [64]
     learning_rate = [0.03]  # 0.03-adagrad 0.3-sgd

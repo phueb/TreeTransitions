@@ -27,12 +27,16 @@ def main_job(param2val):
     srn = RNN(toy_data.num_vocab, params)
     num_cats2bas = {num_cats: [] for num_cats in params.num_cats_list}
     for part_id, part_id_seqs in enumerate(toy_data.gen_part_id_seqs()):
+        part_num = part_id + 1
 
         print('num part_id_seqs in partition={}'.format(len(part_id_seqs)))
         # perplexity
         pp = srn.calc_seqs_pp(part_id_seqs) if config.Eval.calc_pp else 0
+
         # iterations
-        for iteration in range(params.num_iterations):
+        for iter_id in range(params.num_iterations):
+            iter_num = iter_id + 1
+
             # ba
             for num_cats in params.num_cats_list:
                 probes = toy_data.x_words
@@ -49,11 +53,11 @@ def main_job(param2val):
                 ba = calc_ba(cosine_similarity(p_acts), probes, probe2cat)
                 num_cats2bas[num_cats].append(ba)
                 print('partition={:>2}/{:>2} | ba={:.3f} num_cats={}'.format(
-                    part_id, params.num_partitions, ba, num_cats))
-            #
+                    part_num, params.num_partitions, ba, num_cats))
             print('partition={:>2}/{:>2} iteration {}/{} | before-training partition pp={:>5}\n'.format(
-                part_id, params.num_partitions, iteration, params.num_iterations, pp))
+                part_num, params.num_partitions, iter_num, params.num_iterations, pp))
             sys.stdout.flush()
+
             # train
             srn.train_partition(part_id_seqs, verbose=False)  # a seq is a window (e.g. a bi-gram)
 

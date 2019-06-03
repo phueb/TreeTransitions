@@ -27,13 +27,13 @@ CONFIDENCE = 0.95
 
 
 default_dict = MatchParams.__dict__.copy()
-# MatchParams.legal_probs = [[1.0, 1.0], [0.5, 1.0]]
+# MatchParams.num_non_probes_list = [[1024]]
 
 
 def gen_param_ps(param2requested, param2default):
     compare_params = [param for param, val in param2requested.__dict__.items()
                       if val != param2default[param]]
-    for param_p in config.RemoteDirs.runs.glob('param_*'):
+    for param_p in sorted(config.RemoteDirs.runs.glob('param_*')):
         print('Checking {}...'.format(param_p))
         with (param_p / 'param2val.yaml').open('r') as f:
             param2val = yaml.load(f, Loader=yaml.FullLoader)
@@ -157,11 +157,7 @@ def plot_ba_trajs(results):
             ax.plot(x, ba_means, color=c,
                     label='num_cats={}'.format(num_cats) if n == 0 else '_nolegend_',
                     linestyle='-' if n == 0 else ':')
-
-            # TODO test conf int
-            # dof = 20
-
-            # ba conf_int
+            # ba confidence interval
             ba_sems = np.asarray(d2[num_cats])
             q = (1 - CONFIDENCE) / 2.
             margins = ba_sems * stats.t.ppf(q, dof)
