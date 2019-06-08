@@ -11,11 +11,11 @@ class Params:
     num_probes = [512]
     num_contexts = [128]  # a smaller number reduces category structure of probes
     num_seqs = [5 * 10 ** 6]
-    mutation_prob = [0.01]
+    mutation_prob = [0.03]    # TODO test
     num_cats_list = [[2, 4, 8, 16, 32]]
     # rnn
-    num_iterations = [2]  # TODO test gradual
-    num_partitions = [20]
+    num_iterations = [20]
+    num_partitions = [2]
     rnn_type = ['srn']
     mb_size = [64]
     learning_rate = [0.03]  # 0.03-adagrad 0.3-sgd

@@ -9,7 +9,7 @@ from ludwigcluster.utils import list_all_param2vals
 
 
 # fig
-PLOT_NUM_SVS = 64
+PLOT_NUM_SVS = 4
 LEG_FONTSIZE = 16
 AX_FONTSIZE = 16
 FIGSIZE = (8, 8)
@@ -33,10 +33,13 @@ def plot_comparison(ys, params):
     ax.spines['top'].set_visible(False)
     ax.tick_params(axis='both', which='both', top=False, right=False)
     # ax.set_ylim([0, 14])
+    x = np.arange(PLOT_NUM_SVS)
+    ax.set_xticks(x)
+    ax.set_xticklabels(x)
     # plot
     labels = iter(['legal probability={}'.format(sp) for sp in params.legal_probs])
     for n, y in enumerate(ys):
-        ax.plot(y, label=next(labels) or 'partition {}'.format(n + 1), linewidth=2)
+        ax.plot(x, y, label=next(labels) or 'partition {}'.format(n + 1), linewidth=2)
     ax.legend(loc='upper right', frameon=False, fontsize=LEG_FONTSIZE)
     plt.tight_layout()
     plt.show()
