@@ -3,15 +3,15 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 """
-compute singular values for term-by-windwo co-occurrence matrices defined by the legals matrices belows.
+compute singular values for term-by-window co-occurrence matrices defined by the legals matrices belows.
 """
 
-NUM_SEQUENCES = 1000
+NUM_SEQUENCES = 100000  # each partition has exactly the same number of sequences (this must be true)
 
 
 def plot_comparison(ys, fontsize=12, figsize=(5, 5)):
     fig, ax = plt.subplots(1, figsize=figsize, dpi=None)
-    plt.title('SVD on hypothetical category structures', fontsize=fontsize)
+    plt.title('SVD of hypothetical\nterm-by-window co-occurrence matrix', fontsize=fontsize)
     ax.set_ylabel('Singular value', fontsize=fontsize)
     ax.set_xlabel('Singular Dimension', fontsize=fontsize)
     ax.spines['right'].set_visible(False)
@@ -28,12 +28,12 @@ def plot_comparison(ys, fontsize=12, figsize=(5, 5)):
     plt.show()
 
 
-part1_legals_mat = np.array([[1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-                             [1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-                             [1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-                             [0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0],
-                             [0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0],
-                             [0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0],
+part1_legals_mat = np.array([[0, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0],
+                             [1, 0, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0],
+                             [1, 1, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0],
+                             [1, 1, 1, 0, 1, 1, 0, 0, 0, 0, 0, 0],
+                             [1, 1, 1, 1, 0, 1, 0, 0, 0, 0, 0, 0],
+                             [1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0],
                              [0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1],
                              [0, 0, 0, 0, 0, 0, 1, 0, 1, 1, 1, 1],
                              [0, 0, 0, 0, 0, 0, 1, 1, 0, 1, 1, 1],
@@ -42,12 +42,12 @@ part1_legals_mat = np.array([[1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0],
                              [0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 0]])
 
 
-part2_legals_mat = np.array([[1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-                             [1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-                             [1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-                             [0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0],
-                             [0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0],
-                             [0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0],
+part2_legals_mat = np.array([[1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0],
+                             [1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0],
+                             [1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0],
+                             [1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0],
+                             [1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0],
+                             [1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0],
                              [0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1],
                              [0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1],
                              [0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1],
@@ -67,11 +67,12 @@ for mat in [part1_legals_mat, part2_legals_mat, ]:
         j = nonzero_ids[1][idx].item()
         term_window_co_occurrence_mat[i, j] += 1
     print(term_window_co_occurrence_mat)
-    print(term_window_co_occurrence_mat.sum())  # sums must match  (because each partition has same num_tokens)
+    print('sum={:,}'.format(term_window_co_occurrence_mat.sum()))  # sums must match
+    print('var={:,}'.format(term_window_co_occurrence_mat.var()))
     # SVD on term_window_co_occurrence_mat
     s = np.linalg.svd(term_window_co_occurrence_mat, compute_uv=False)
     print('svls', ' '.join(['{:>6.2f}'.format(si) for si in s]))
-    print(np.sum(s))
+    print('sum of svls={:,}'.format(np.sum(s)))
     print()
     # collect
     ys.append(s)
