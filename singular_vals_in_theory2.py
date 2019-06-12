@@ -106,11 +106,11 @@ for term_window_co_occurrence_mat, title in [(mat1, 'p1'),
     print([col.var() for col in mat.T])
 
     # SVD on term_window_co_occurrence_mat
-    u, s, v = np.linalg.svd(mat, compute_uv=True)
+    u, s, v = np.linalg.svd(mat, compute_uv=True, full_matrices=False)
     print('svls', ' '.join(['{:>6.2f}'.format(si) for si in s]))
     print('sum of svls={:,}'.format(np.sum(s)))
-    # print(u)
-    # print(v)
+    print(u)
+    print(v)
     print()
 
     # compute singular value 1

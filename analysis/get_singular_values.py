@@ -1,6 +1,7 @@
 import numpy as np
 from sklearn.decomposition import PCA
 import matplotlib.pyplot as plt
+from sklearn.preprocessing import normalize
 
 from treetransitions.params import Params, ObjectView
 from treetransitions.toy_data import ToyData
@@ -9,35 +10,32 @@ from ludwigcluster.utils import list_all_param2vals
 
 
 # fig
-PLOT_NUM_SVS = 4
+PLOT_NUM_SVS = 64
 LEG_FONTSIZE = 16
 AX_FONTSIZE = 16
-FIGSIZE = (8, 8)
+FIGSIZE = (5, 5)
 DPI = None
 
 
-CLIPPING = False
-
 Params.mutation_prob = [0.01]
-Params.num_seqs = [1 * 10 ** 6]
+Params.num_seqs = [2 * 10 ** 6]
 Params.num_partitions = [2]
 Params.legal_probs = [[0.5, 1.0]]
 
 
 def plot_comparison(ys, params):
     fig, ax = plt.subplots(1, figsize=FIGSIZE, dpi=DPI)
-    plt.title('Effect of the reduction of non-probe\nhierarchical category structure on SVD', fontsize=AX_FONTSIZE)
     ax.set_ylabel('Singular value', fontsize=AX_FONTSIZE)
-    ax.set_xlabel('Principal Component', fontsize=AX_FONTSIZE)
+    ax.set_xlabel('Singular Dimension', fontsize=AX_FONTSIZE)
     ax.spines['right'].set_visible(False)
     ax.spines['top'].set_visible(False)
     ax.tick_params(axis='both', which='both', top=False, right=False)
     # ax.set_ylim([0, 14])
     x = np.arange(PLOT_NUM_SVS)
-    ax.set_xticks(x)
-    ax.set_xticklabels(x)
+    # ax.set_xticks(x)
+    # ax.set_xticklabels(x)
     # plot
-    labels = iter(['legal probability={}'.format(sp) for sp in params.legal_probs])
+    labels = iter([r'$P_1={}$'.format(sp) for sp in params.legal_probs])
     for n, y in enumerate(ys):
         ax.plot(x, y, label=next(labels) or 'partition {}'.format(n + 1), linewidth=2)
     ax.legend(loc='upper right', frameon=False, fontsize=LEG_FONTSIZE)
@@ -62,15 +60,6 @@ for param2val in list_all_param2vals(Params, update_d={'param_name': 'test', 'jo
         print(k, v)
     toy_data = ToyData(params, max_ba=False, make_tokens=True)
 
-    # # use legals mat as input to PCA
-    # singular_vals = []
-    # mat1 = toy_data.untruncated_legals_mat
-    # pca1 = PCA(svd_solver='full')  # pca is invariant to transposition
-    # pca1.fit(mat1)
-    # singular_vals.append(pca1.singular_values_[:PLOT_NUM_SVS])
-    # # plot
-    # plot_comparison(singular_vals, params)
-
     # use in_out correlation mat computed on tokens as input to PCA
     singular_vals = []
     for word_seq_mat_chunk in np.vsplit(toy_data.word_sequences_mat, params.num_partitions):
@@ -80,23 +69,14 @@ for param2val in list_all_param2vals(Params, update_d={'param_name': 'test', 'jo
         for name, (xws, yws) in toy_data.name2words.items():
             all_x_words.extend(xws)
             all_y_words.extend(yws)
-        in_out_corr_mat = make_bigram_count_mat(word_seq_mat_chunk, all_x_words, all_y_words)
-        if CLIPPING:
-            mat2 = np.clip(in_out_corr_mat, 0, 1)
-        else:
-            mat2 = in_out_corr_mat
+        term_by_window_mat = make_bigram_count_mat(word_seq_mat_chunk, all_x_words, all_y_words)
 
-        # num_one_in_mat1 = len(np.where(mat1 == 1)[0])
-        # num_one_in_mat2 = np.count_nonzero(mat2)
-        # print('num 1s in legals_mat={:,}'.format(num_one_in_mat1))
-        # print('num 1s in in_out_corr_mat={:,}'.format(num_one_in_mat2))
-        # print('difference={:,}'.format(num_one_in_mat1 - num_one_in_mat2))
-
+        term_by_window_mat = normalize(term_by_window_mat, axis=1, norm='l2', copy=False)
         pca2 = PCA(svd_solver='full')  # pca is invariant to transposition
-        pca2.fit(mat2)
+        pca2.fit(term_by_window_mat)
 
         # console
-        print('total var={:,}'.format(np.var(mat2, ddof=1, axis=0).sum().round(0)))  # total variance
+        print('total var={:,}'.format(np.var(term_by_window_mat, ddof=1, axis=0).sum().round(0)))  # total variance
         for start, end in [(0, 31), (31, 64), (64, 1023)]:
             print('start={} end={}'.format(start, end))
 

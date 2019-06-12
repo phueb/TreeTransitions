@@ -1,4 +1,5 @@
 import numpy as np
+from sklearn.preprocessing import StandardScaler
 
 import matplotlib.pyplot as plt
 
@@ -55,8 +56,9 @@ part2_legals_mat = np.array([[1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0],
                              [0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1],
                              [0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1]])
 
+
 ys = []
-for mat in [part1_legals_mat, part2_legals_mat, ]:
+for mat in [part1_legals_mat, part2_legals_mat]:
     # make term_window_co_occurrence_mat
     term_window_co_occurrence_mat = np.zeros_like(mat)
     nonzero_ids = np.nonzero(mat)
@@ -69,10 +71,30 @@ for mat in [part1_legals_mat, part2_legals_mat, ]:
     print(term_window_co_occurrence_mat)
     print('sum={:,}'.format(term_window_co_occurrence_mat.sum()))  # sums must match
     print('var={:,}'.format(term_window_co_occurrence_mat.var()))
-    # SVD on term_window_co_occurrence_mat
+    # SVD of X
     s = np.linalg.svd(term_window_co_occurrence_mat, compute_uv=False)
     print('svls', ' '.join(['{:>6.2f}'.format(si) for si in s]))
-    print('sum of svls={:,}'.format(np.sum(s)))
+    print('{:,}=sum of svls'.format(np.sum(s)))
+    # eigen- decomposition of X'X - should result in eigenvalues which are the square roots of singular values
+    xtx = np.dot(term_window_co_occurrence_mat.T, term_window_co_occurrence_mat)
+    sum_diag_xtx = np.sum(np.diagonal(xtx))
+    eigen_values = np.linalg.eigvals(xtx)
+    squared_singular_values = np.power(s, 2)
+
+    print(squared_singular_values)
+    print(eigen_values)
+    print('are squared singular vales close to eigen values?')
+    print([np.isclose(a, b) for a, b in zip(squared_singular_values, eigen_values)])
+
+    print('{:,}=sum of xtx col variances'.format(np.sum(xtx.var(0))))
+    print('{:,}=sum of diag cov_mat'.format(np.sum(np.diag(np.cov(term_window_co_occurrence_mat, ddof=0)))))
+    print('{:,}=sum of col variances'.format(np.sum(term_window_co_occurrence_mat.var(0))))
+    print('{:>,}=sum_diag_xtx'.format(sum_diag_xtx))
+    print('{:,}=sum_eigenvalues'.format(np.sum(eigen_values)))
+    print('{:,}=sum_squared(si)'.format(np.sum(squared_singular_values)))
+
+
+
     print()
     # collect
     ys.append(s)
