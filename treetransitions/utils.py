@@ -8,6 +8,11 @@ from scipy.spatial.distance import pdist
 
 
 def make_term_by_window_mat(word_seqs_mat, toy_data):
+    """
+    keep y-words (which always come in last position in sequence, in the rows.
+    this order matches legals_mat and term-by-window matrix obtained calculated in CHILDES-hub.
+    transposition only slightly changes results of SVD
+    """
     assert word_seqs_mat.shape[1] == 2  # works with bi-grams only
     #
     all_x_words = []

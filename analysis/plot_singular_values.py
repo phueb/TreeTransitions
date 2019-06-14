@@ -16,12 +16,12 @@ FIGSIZE = (5, 5)
 DPI = None
 
 
-Params.mutation_prob = [0.01]  # TODO
-Params.num_seqs = [2 * 10 ** 6]
+Params.mutation_prob = [0.01]
+Params.num_seqs = [1 * 10 ** 6]  # TODO
 Params.num_partitions = [2]
 Params.legal_probs = [[0.5, 1.0]]
-Params.num_non_probes_list = [[512]]
-Params.num_contexts = [512]  # TODO if this is high, then singular values are no different - why?
+Params.num_non_probes_list = [[1024]]
+Params.num_contexts = [128]  # TODO if this is high, then singular values are no different - why?
 
 
 def plot_comparison(ys, params):
@@ -44,6 +44,8 @@ def plot_comparison(ys, params):
 
 
 for param2val in list_all_param2vals(Params, update_d={'param_name': 'test', 'job_name': 'test'}):
+
+    # toy_data
     params = ObjectView(param2val)
     for k, v in sorted(params.__dict__.items()):
         print(k, v)

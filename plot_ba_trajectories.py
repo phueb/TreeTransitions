@@ -27,9 +27,9 @@ CONFIDENCE = 0.95
 
 
 default_dict = MatchParams.__dict__.copy()
-MatchParams.num_non_probes_list = [[512]]
+MatchParams.num_non_probes_list = [[512, 512]]
 MatchParams.legal_probs = [[0.5, 1.0], [1.0, 1.0]]
-MatchParams.mutation_prob = [0.01]  # TODO
+MatchParams.mutation_prob = [0.01]
 
 
 def gen_param_ps(param2requested, param2default):
@@ -168,7 +168,7 @@ def plot_ba_trajs(results):
             if d3 is not None and PLOT_MAX_BA:
                 ax.axhline(y=d3[num_cats], linestyle='dashed', color=c, alpha=0.5)
     if LEGEND:
-        plt.legend(loc='best', frameon=False)
+        plt.legend(loc='upper left', frameon=False)
     plt.show()
 
 

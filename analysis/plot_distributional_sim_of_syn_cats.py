@@ -10,14 +10,14 @@ from ludwigcluster.utils import list_all_param2vals
 
 
 # fig
-NUM_SVS = 512
+NUM_SVS = 32  # TODO
 FONTSIZE = 16
 FIGSIZE = (5, 5)
 DPI = None
 
 
 Params.mutation_prob = [0.01]
-Params.num_seqs = [5 * 10 ** 6]
+Params.num_seqs = [1 * 10 ** 6]  # TODO
 Params.num_partitions = [2]
 Params.legal_probs = [[0.5, 1.0]]
 Params.num_non_probes_list = [[1024, 1024, 1024]]  # must be 3
@@ -63,15 +63,20 @@ for param2val in list_all_param2vals(Params, update_d={'param_name': 'test', 'jo
         term_by_window_mat, all_xws, all_yws = make_term_by_window_mat(word_seq_mat_chunk, toy_data)
         print('sum of term_by_window_mat={}'.format(term_by_window_mat.sum()))
         print('var of term_by_window_mat={}'.format(term_by_window_mat.var()))
+        #
+        term_by_window_mat = term_by_window_mat.T  # because x-words are in cols and SVD must be over y-words
         normalized = normalize(term_by_window_mat, axis=1, norm='l2', copy=False)
         u, s, v = np.linalg.svd(normalized, full_matrices=False)
         # get reps
-        bool_ids0 = [True if yw in toy_data.name2words['0'][1] else False for yw in all_yws]
-        bool_ids1 = [True if yw in toy_data.name2words['1'][1] else False for yw in all_yws]
-        bool_ids2 = [True if yw in toy_data.name2words['2'][1] else False for yw in all_yws]
-        syn_cat_members0 = u[bool_ids0][:, :NUM_SVS]
-        syn_cat_members1 = u[bool_ids1][:, :NUM_SVS]
-        syn_cat_members2 = u[bool_ids2][:, :NUM_SVS]  # TODO test SVS
+        bool_ids0 = [True if xw in toy_data.name2words['0'][0] else False for xw in all_xws]
+        bool_ids1 = [True if xw in toy_data.name2words['1'][0] else False for xw in all_xws]
+        bool_ids2 = [True if xw in toy_data.name2words['2'][0] else False for xw in all_xws]
+        syn_cat_members0 = u[bool_ids0] if NUM_SVS is None else u[bool_ids0][:, :NUM_SVS]
+        syn_cat_members1 = u[bool_ids1] if NUM_SVS is None else u[bool_ids1][:, :NUM_SVS]
+        syn_cat_members2 = u[bool_ids2] if NUM_SVS is None else u[bool_ids2][:, :NUM_SVS]
+        print(syn_cat_members0.shape)
+        print(syn_cat_members1.shape)
+        print(syn_cat_members2.shape)
         # sim
         sim0 = np.corrcoef(syn_cat_members0, rowvar=True).mean().item()
         sim1 = np.corrcoef(syn_cat_members1, rowvar=True).mean().item()
@@ -79,7 +84,6 @@ for param2val in list_all_param2vals(Params, update_d={'param_name': 'test', 'jo
         y0.append(sim0)
         y1.append(sim1)
         y2.append(sim2)
-
         print(sim0)
         print(sim1)
         print(sim2)
