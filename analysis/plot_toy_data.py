@@ -12,17 +12,17 @@ from ludwigcluster.utils import list_all_param2vals
 Params.num_seqs = [2 * 10 ** 6]
 Params.mutation_prob = [0.01]
 Params.legal_probs = [[1.0, 1.0]]
-Params.num_contexts = [128]
+Params.num_contexts = [512]
 Params.num_non_probes_list = [[1024]]
 
 COMPLETE_LEGAL_MAT_LEGAL_PROB = 0.5
 
-PLOT_TREES = False
+PLOT_TREES = True
 PLOT_LEGALS_MAT = False
 PLOT__COMPLETE_LEGALS_MAT = True
-PLOT_LEGAL_CORR_MATS = True
-PLOT_WITH_LABELS = False
-PLOT_CORR_MAT_DG = False
+PLOT_CORR_MATS = True
+PLOT_PROBES_CORR_MAT_WITH_LABELS = False
+PLOT_PROBES_CORR_MAT_DG = True
 
 
 def plot_heatmap(mat, ytick_labels, xtick_labels, title='', xlabel='', ticklabel_fs=1, fontsize=16):
@@ -76,7 +76,7 @@ for param2vals in list_all_param2vals(Params, update_d={'param_name': 'test', 'j
         complete_legals_mat = toy_data.make_complete_legals_mat(legal_prob=COMPLETE_LEGAL_MAT_LEGAL_PROB)
         plot_heatmap(complete_legals_mat, [], [], xlabel=xlabel, title=title)
     # plot
-    if PLOT_LEGAL_CORR_MATS:
+    if PLOT_CORR_MATS:
         for name, legals_mat in toy_data.name2legals_mat.items():
             # correlation matrix is symmetric (xlabel=ylabel)
             # the only way to show hierarchical pattern here is to correlate context words
@@ -85,13 +85,13 @@ for param2vals in list_all_param2vals(Params, update_d={'param_name': 'test', 'j
             plot_heatmap(cluster(to_corr_mat(legals_mat)), [], [], xlabel=xlabel)
 
     # corr_mat
-    if PLOT_WITH_LABELS:
+    if PLOT_PROBES_CORR_MAT_WITH_LABELS:
         corr_mat = to_corr_mat(toy_data.probes_legals_mat)
         clustered_corr_mat, row_words, col_words = cluster(corr_mat, toy_data.vocab, toy_data.vocab)
         plot_heatmap(clustered_corr_mat, row_words, col_words)  # row_words, col_words
 
     # plot dg - of the CORRELATION MATRIX  - NOT THE RAW DATA MATRIX
-    if PLOT_CORR_MAT_DG:
+    if PLOT_PROBES_CORR_MAT_DG:
         corr_mat = to_corr_mat(toy_data.probes_legals_mat)
         z = linkage(corr_mat, metric='correlation')
         fig, ax = plt.subplots(figsize=(40, 10), dpi=200)

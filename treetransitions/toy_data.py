@@ -306,6 +306,9 @@ class ToyData:
             link2color[i + 1 + len(self.z)] = c1 if c1 == c2 else 'grey'
         # plot
         fig, ax = plt.subplots(figsize=(10, 5), dpi=None)
+        ax.spines['right'].set_visible(False)
+        ax.spines['top'].set_visible(False)
+        ax.tick_params(axis='both', which='both', top=False, right=False)
         dendrogram(self.z, ax=ax, color_threshold=None, link_color_func=lambda i: link2color[i])
         ax.set_xticklabels([])
         plt.show()
