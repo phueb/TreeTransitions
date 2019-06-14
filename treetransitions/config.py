@@ -20,8 +20,9 @@ class Eval:
     calc_pp = False
     num_processes = 4
     plot_tree = False
-    plot_legals_mat = False
-    plot_corr_mat = False
+    plot_legal_mats = False
+    plot_legal_corr_mats = False
+    plot_complete_legal_corr_mat = True
 
 
 class Graph:

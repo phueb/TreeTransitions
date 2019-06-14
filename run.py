@@ -14,8 +14,8 @@ def run_on_cluster():
     """
     run multiple jobs on multiple LudwigCluster nodes.
     """
-    config.Eval.plot_legals_mat = False
-    config.Eval.plot_corr_mat = False
+    config.Eval.plot_legal_mats = False
+    config.Eval.plot_legal_corr_mats = False
     config.Eval.plot_tree = False
     #
     p = config.RemoteDirs.root / '{}_param2val_chunk.pkl'.format(hostname)

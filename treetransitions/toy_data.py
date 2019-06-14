@@ -64,8 +64,9 @@ class ToyData:
         #
         self.name2legals_mat = SortedDict({name: self.make_legals_mat(name, xws, yws)
                                            for name, (xws, yws) in self.name2words.items()})
-        self.print_legals_info()
         self.probes_legals_mat = self.name2legals_mat['p']
+        self.complete_legals_mat = self.make_complete_legals_mat()
+        self.print_legals_info()
         #
         self.z = self.make_z()
         self.num_cats2probe2cat = {num_cats: self.make_probe2cat(num_cats)
@@ -77,14 +78,20 @@ class ToyData:
         self.num_cats2probe2color = {num_cats: self.make_probe2color(num_cats) for num_cats in params.num_cats_list}
         for num_cats in self.params.num_cats_list:
             self.plot_tree(num_cats) if config.Eval.plot_tree else None
-        # plot legals_mat
-        if config.Eval.plot_legals_mat:
+        # plot
+        if config.Eval.plot_legal_mats:
             for name, legals_mat in self.name2legals_mat.items():
                 self.plot_heatmap(legals_mat, name)
-        # pot legals_mat correlation matrix
-        if config.Eval.plot_corr_mat:
+        # plot
+        if config.Eval.plot_complete_legal_corr_mat:
+            xlabel = 'Sequence-initial words'
+            title = ''
+            self.plot_heatmap(cluster(to_corr_mat(self.complete_legals_mat)), xlabel=xlabel, title=title)
+        # plot
+        if config.Eval.plot_legal_corr_mats:
             for name, legals_mat in self.name2legals_mat.items():
-                self.plot_heatmap(cluster(to_corr_mat(legals_mat)), name)
+                xlabel = '{}-words'.format(name)
+                self.plot_heatmap(cluster(to_corr_mat(legals_mat)), xlabel=xlabel)
         #
         if make_tokens:
             self.word_sequences_mat = self.make_sequences_mat()
@@ -126,24 +133,50 @@ class ToyData:
         np.random.seed(None)
         return res
 
-    def print_legals_info(self):
-        super_mat = np.hstack([mat for mat in self.name2legals_mat.values()])
-        num_legal = np.count_nonzero(np.clip(super_mat, 0, 1))
-        print('Maximum number of sequences possible={:,}'.format(super_mat.size))
-        print('Number of sequences specified by legals_mats={:,}'.format(num_legal))
+    def make_complete_legals_mat(self):
+        """
+        x-words are in column, y-words are in rows
+        """
+        print('Making complete_legals_mat...')
+        xws = np.concatenate([words[0] for words in self.name2words.values()])
+        yws = np.concatenate([words[1] for words in self.name2words.values()])
+        xw2id = {xw: n for n, xw in enumerate(xws)}
+        yw2id = {yw: n for n, yw in enumerate(yws)}
+        res = -np.zeros((len(yws), len(xws)))
+        #
+        yws = [w for w in self.vocab if 'y' in w]
+        for yw in yws:
+            name = yw[0]
+            row_id = self.name2words[name][1].index(yw)
+            row = self.name2legals_mat[name][row_id]
+            for col_id, val in enumerate(row):
+                xw = self.name2words[name][0][col_id]
+                if int(val) == 1:
+                    xw_vocab_id = xw2id[xw]
+                    yw_vocab_id = yw2id[yw]
+                    res[yw_vocab_id, xw_vocab_id] = 1
+        #
+        pos_prob = np.count_nonzero(np.clip(res, 0, 1)) / np.size(res)
+        print('pos_prob={}'.format(pos_prob))
+        return res
 
-    def plot_heatmap(self, mat, name):
+    def print_legals_info(self):
+        num_legal = np.count_nonzero(np.clip(self.complete_legals_mat, 0, 1))
+        print('Maximum number of sequences possible in complete_legals_mat={:,}'.format(self.complete_legals_mat.size))
+        print('Number of sequences legal by complete_legals_mat={:,}'.format(num_legal))
+
+    @staticmethod
+    def plot_heatmap(mat, xlabel, title='', fontsize=16):
         fig, ax = plt.subplots(figsize=(8, 8), dpi=None)
         # heatmap
         print('Plotting heatmap...')
-        plt.title('Legals Matrix'.format(self.params.mutation_prob))
+        plt.title(title, fontsize=fontsize)
         ax.imshow(mat,
                   aspect='equal',
-                  # cmap=plt.get_cmap('jet'),
-                  cmap='Greys',
+                  cmap='jet',
                   interpolation='nearest')
-        ax.set_xlabel('Words in Category "{}"'.format(name))
-        ax.set_ylabel('Context words')
+        ax.set_xlabel(xlabel, fontsize=fontsize)
+        ax.set_ylabel('Context words', fontsize=fontsize)
         # xticks
         num_cols = len(mat.T)
         ax.set_xticks(np.arange(num_cols))

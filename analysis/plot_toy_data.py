@@ -10,12 +10,12 @@ from ludwigcluster.utils import list_all_param2vals
 
 NUM_CATS = 32
 
-Params.num_seqs = [1 * 10 ** 6]
-Params.mutation_prob = [0.01, 0.05, 0.1]
+Params.num_seqs = [2 * 10 ** 6]
+Params.mutation_prob = [0.01]
 Params.num_cats_list = [[NUM_CATS]]
-Params.truncate_num_cats = [NUM_CATS]
-Params.truncate_list = [[1.0, 1.0]]
-Params.learning_rate = [0.03]
+Params.legal_probs = [[1.0, 1.0]]
+Params.num_contexts = [512]
+Params.num_non_probes_list = [[512], [512, 512], [512, 512, 512]]
 
 
 def plot_heatmap(mat, ytick_labels, xtick_labels,
@@ -26,7 +26,7 @@ def plot_heatmap(mat, ytick_labels, xtick_labels,
     print('Plotting heatmap...')
     ax.imshow(mat,
               aspect='equal',
-              cmap=plt.get_cmap('jet'),
+              cmap='jet',
               interpolation='nearest')
     # xticks
     num_cols = len(mat.T)
@@ -51,6 +51,8 @@ for param2vals in list_all_param2vals(Params, update_d={'param_name': 'test', 'j
     for k, v in sorted(params.__dict__.items()):
         print(k, v)
     toy_data = ToyData(params, max_ba=False, make_tokens=False)
+
+    continue
 
     # corr_mat
     corr_mat = to_corr_mat(toy_data.probes_legals_mat)

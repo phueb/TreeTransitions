@@ -4,7 +4,7 @@
 #
 cd /home/ph/LudwigCluster/scripts
 bash kill_job.sh TreeTransitions
-#bash reload_watcher.sh
+bash reload_watcher.sh
 
 echo "Submitting to Ludwig..."
 cd /home/ph/TreeTransitions

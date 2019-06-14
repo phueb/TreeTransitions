@@ -18,13 +18,17 @@ DPI = None
 
 
 Params.mutation_prob = [0.01]
-Params.num_seqs = [2 * 10 ** 6]
+Params.num_seqs = [1 * 10 ** 6]
 Params.num_partitions = [2]
 Params.legal_probs = [[0.5, 1.0]]
+Params.num_non_probes_list = [[1024], [1024, 1024], [1024, 1024, 1024]]
+Params.num_contexts = [1024]
 
 
 def plot_comparison(ys, params):
     fig, ax = plt.subplots(1, figsize=FIGSIZE, dpi=DPI)
+    # plt.title('num_non_probes_list={}'.format(params.num_non_probes_list))
+    plt.title('number of syntactic categories={}'.format(len(params.num_non_probes_list)))
     ax.set_ylabel('Singular value', fontsize=AX_FONTSIZE)
     ax.set_xlabel('Singular Dimension', fontsize=AX_FONTSIZE)
     ax.spines['right'].set_visible(False)
