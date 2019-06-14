@@ -7,6 +7,24 @@ from scipy.cluster.hierarchy import linkage, dendrogram
 from scipy.spatial.distance import pdist
 
 
+def make_term_by_window_mat(word_seqs_mat, toy_data):
+    assert word_seqs_mat.shape[1] == 2  # works with bi-grams only
+    #
+    all_x_words = []
+    all_y_words = []
+    for name, (xws, yws) in toy_data.name2words.items():
+        all_x_words.extend(xws)
+        all_y_words.extend(yws)
+    #
+    num_xws = len(all_x_words)
+    num_yws = len(all_y_words)
+    res = np.zeros((num_yws, num_xws))
+    print('Making term_by_window_mat with shape={}...'.format(res.shape))
+    for xw, yw in word_seqs_mat:
+        res[all_y_words.index(yw), all_x_words.index(xw)] += 1  # put yws in rows like in legals_mat
+    return res, all_x_words, all_y_words
+
+
 def calc_kl_divergence(p, q, epsilon=0.00001):
     pe = p + epsilon
     qe = q + epsilon

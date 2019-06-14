@@ -11,7 +11,7 @@ class Params:
     num_probes = [512]
     num_contexts = [512]  # a smaller number reduces category structure of probes
     num_seqs = [5 * 10 ** 6]
-    mutation_prob = [0.03]    # TODO test
+    mutation_prob = [0.01]
     num_cats_list = [[2, 4, 8, 16, 32]]
     # rnn
     num_iterations = [20]

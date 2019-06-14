@@ -47,7 +47,7 @@ each column (x-word) represents which y_words are allowed to follow the x_word
 
 
 class ToyData:
-    def __init__(self, params, max_ba=True, make_tokens=True):
+    def __init__(self, params, max_ba=True, make_sequences=True):
         self.params = params
         # use SortedDict to prevent non-deterministic corpus generation
         self.name2words = SortedDict({str(n): (self.make_words(str(n) + 'x', num_non_probes),
@@ -76,24 +76,8 @@ class ToyData:
         # plot
         self.num_cats2cmap = {num_cats: plt.cm.get_cmap('hsv', num_cats + 1) for num_cats in params.num_cats_list}
         self.num_cats2probe2color = {num_cats: self.make_probe2color(num_cats) for num_cats in params.num_cats_list}
-        for num_cats in self.params.num_cats_list:
-            self.plot_tree(num_cats) if config.Eval.plot_tree else None
-        # plot
-        if config.Eval.plot_legal_mats:
-            for name, legals_mat in self.name2legals_mat.items():
-                self.plot_heatmap(legals_mat, name)
-        # plot
-        if config.Eval.plot_complete_legal_corr_mat:
-            xlabel = 'Sequence-initial words'
-            title = ''
-            self.plot_heatmap(cluster(to_corr_mat(self.complete_legals_mat)), xlabel=xlabel, title=title)
-        # plot
-        if config.Eval.plot_legal_corr_mats:
-            for name, legals_mat in self.name2legals_mat.items():
-                xlabel = '{}-words'.format(name)
-                self.plot_heatmap(cluster(to_corr_mat(legals_mat)), xlabel=xlabel)
-        #
-        if make_tokens:
+        # sequences
+        if make_sequences:
             self.word_sequences_mat = self.make_sequences_mat()
             self.num_seqs = len(self.word_sequences_mat)  # divisible by mb_size and num_partitions
             print('shape of word_sequences_mat={}'.format(self.word_sequences_mat.shape))
@@ -133,9 +117,10 @@ class ToyData:
         np.random.seed(None)
         return res
 
-    def make_complete_legals_mat(self):
+    def make_complete_legals_mat(self, legal_prob=1.0):  # modify legal_prob only for plotting
         """
-        x-words are in column, y-words are in rows
+        x-words are in column, y-words are in rows.
+        this matrix is not affected by legal_probs
         """
         print('Making complete_legals_mat...')
         xws = np.concatenate([words[0] for words in self.name2words.values()])
@@ -151,7 +136,8 @@ class ToyData:
             row = self.name2legals_mat[name][row_id]
             for col_id, val in enumerate(row):
                 xw = self.name2words[name][0][col_id]
-                if int(val) == 1:
+                legal_prob_adj = 1.0 if name == 'p' else legal_prob  # use only for plotting
+                if int(val) == 1 and bool(np.random.binomial(n=1, p=legal_prob_adj, size=1).item()):
                     xw_vocab_id = xw2id[xw]
                     yw_vocab_id = yw2id[yw]
                     res[yw_vocab_id, xw_vocab_id] = 1
@@ -164,32 +150,6 @@ class ToyData:
         num_legal = np.count_nonzero(np.clip(self.complete_legals_mat, 0, 1))
         print('Maximum number of sequences possible in complete_legals_mat={:,}'.format(self.complete_legals_mat.size))
         print('Number of sequences legal by complete_legals_mat={:,}'.format(num_legal))
-
-    @staticmethod
-    def plot_heatmap(mat, xlabel, title='', fontsize=16):
-        fig, ax = plt.subplots(figsize=(8, 8), dpi=None)
-        # heatmap
-        print('Plotting heatmap...')
-        plt.title(title, fontsize=fontsize)
-        ax.imshow(mat,
-                  aspect='equal',
-                  cmap='jet',
-                  interpolation='nearest')
-        ax.set_xlabel(xlabel, fontsize=fontsize)
-        ax.set_ylabel('Context words', fontsize=fontsize)
-        # xticks
-        num_cols = len(mat.T)
-        ax.set_xticks(np.arange(num_cols))
-        ax.xaxis.set_ticklabels([])
-        # yticks
-        num_rows = len(mat)
-        ax.set_yticks(np.arange(num_rows))
-        ax.yaxis.set_ticklabels([])
-        # remove ticklines
-        lines = (ax.xaxis.get_ticklines() +
-                 ax.yaxis.get_ticklines())
-        plt.setp(lines, visible=False)
-        plt.show()
 
     # ///////////////////////////////////////////////////////////////////////// probes
 

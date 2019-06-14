@@ -27,7 +27,9 @@ CONFIDENCE = 0.95
 
 
 default_dict = MatchParams.__dict__.copy()
-# MatchParams.num_non_probes_list = [[1024]]
+MatchParams.num_non_probes_list = [[512]]
+MatchParams.legal_probs = [[0.5, 1.0], [1.0, 1.0]]
+MatchParams.mutation_prob = [0.01]  # TODO
 
 
 def gen_param_ps(param2requested, param2default):
