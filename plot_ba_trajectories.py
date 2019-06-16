@@ -13,22 +13,25 @@ from treetransitions.params import Params as MatchParams
 
 VERBOSE = True
 
+SOLID_LINE_ID = 0  # 0 or 1 to flip which line is solid
+# CUSTOM_COMPARISON_TITLE = None # r'$C_3$ (dashed line) vs. $C_3reducedComplexity$ (solid line)'  # or None
+CUSTOM_COMPARISON_TITLE = 'The effect of training order on semantic categorization\n$C_3startingSmall$'  # or None
+
 Y_MAX = 1.0
 X_STEP = 5
 GRID = False
 PLOT_MAX_BA = False
 LEGEND = True
 YLIMs = None
-TITLE_FONTSIZE = 10
-PLOT_NUM_CATS_LIST = [2, 4, 8, 16, 32]
+PLOT_NUM_CATS_LIST = [32]
 TOLERANCE = 0.05
 PLOT_COMPARISON = True
 CONFIDENCE = 0.95
 
 
 default_dict = MatchParams.__dict__.copy()
-MatchParams.num_non_probes_list = [[512, 512]]
-MatchParams.legal_probs = [[0.5, 1.0], [1.0, 1.0]]
+MatchParams.num_non_probes_list = [[512, 512, 512]]
+MatchParams.legal_probs = [[1.0, 0.5], [0.5, 1.0]]
 MatchParams.mutation_prob = [0.01]
 
 
@@ -57,13 +60,19 @@ def make_title(param2val):
 
 
 def make_comparison_title(param2val1, param2val2):
-    res = 'Comparison between '
+    solid1 = 'solid' if SOLID_LINE_ID == 0 else 'dashed'
+    solid2 = 'solid' if SOLID_LINE_ID == 1 else 'dashed'
+    #
+    res = 'Comparison between\n'
     for param, val1 in param2val1.items():
         if param == 'param_name':
             continue
         val2 = param2val2[param]
         if val1 != val2:
-            res += '{}={} vs. {} (dashed line)\n'.format(param, val1, val2)
+            res += '{}={} ({}) vs. {} ({})\n'.format(param, val1, solid1, val2, solid2)
+    #
+    if CUSTOM_COMPARISON_TITLE is not None:
+        res = CUSTOM_COMPARISON_TITLE
     return res
 
 
@@ -103,7 +112,7 @@ def to_dict(dfs, sem):
     return res
 
 
-def plot_ba_trajs(results):
+def plot_ba_trajs(results, fontsize=16):
     # read results
     if len(results) == 1:
         num_cats2ba_means1, num_cats2ba_sems1, num_cats2max_ba1, param2val1, num_results1 = results[0]
@@ -112,7 +121,7 @@ def plot_ba_trajs(results):
         d2s = [num_cats2ba_sems1]
         d3s = [num_cats2max_ba1]
         dofs = [num_results1 - 1]
-        figsize = (10, 10)
+        figsize = (8, 8)
     elif len(results) == 2:
         num_cats2ba_means1, num_cats2ba_sems1, num_cats2max_ba1, param2val1, num_results1 = results[0]
         num_cats2ba_means2, num_cats2ba_sems2, num_cats2max_ba2, param2val2, num_results2 = results[1]
@@ -123,14 +132,14 @@ def plot_ba_trajs(results):
         d2s = [num_cats2ba_sems1, num_cats2ba_sems2]
         d3s = [num_cats2max_ba1, num_cats2max_ba2]
         dofs = [num_results1 - 1, num_results2 - 1]
-        figsize = (10, 8)
+        figsize = (8, 6)
     else:
         raise ValueError('"results" cannot contain more than 2 entries.')
     # fig
     fig, ax = plt.subplots(figsize=figsize, dpi=None)
-    plt.title(title, fontsize=TITLE_FONTSIZE)
-    ax.set_xlabel('Iteration')
-    ax.set_ylabel('Balanced Accuracy +/- {}%-Confidence Interval'.format(CONFIDENCE * 100))
+    plt.title(title, fontsize=fontsize)
+    ax.set_xlabel('Iteration', fontsize=fontsize)
+    ax.set_ylabel('Balanced Accuracy +/-\n{}%-Confidence Interval'.format(CONFIDENCE * 100), fontsize=fontsize)
     ax.spines['right'].set_visible(False)
     ax.spines['top'].set_visible(False)
     ax.tick_params(axis='both', which='both', top=False, right=False)
@@ -158,7 +167,7 @@ def plot_ba_trajs(results):
             ba_means = np.asarray(d1[num_cats])
             ax.plot(x, ba_means, color=c,
                     label='num_cats={}'.format(num_cats) if n == 0 else '_nolegend_',
-                    linestyle='-' if n == 0 else ':')
+                    linestyle='-' if n == SOLID_LINE_ID else ':')
             # ba confidence interval
             ba_sems = np.asarray(d2[num_cats])
             q = (1 - CONFIDENCE) / 2.
@@ -168,7 +177,7 @@ def plot_ba_trajs(results):
             if d3 is not None and PLOT_MAX_BA:
                 ax.axhline(y=d3[num_cats], linestyle='dashed', color=c, alpha=0.5)
     if LEGEND:
-        plt.legend(loc='upper left', frameon=False)
+        plt.legend(loc='upper left', frameon=False, fontsize=fontsize)
     plt.show()
 
 
