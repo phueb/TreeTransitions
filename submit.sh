@@ -14,4 +14,4 @@ deactivate
 echo "Submission completed"
 
 sleep 5
-tail -n 6 /media/lab/stdout/*.out
+tail -n 6 /media/research_data/stdout/*.out

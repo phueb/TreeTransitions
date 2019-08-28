@@ -5,7 +5,7 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
 
 class RemoteDirs:
-    root = Path('/media/lab') / 'TreeTransitions'
+    root = Path('/media/research_data') / 'TreeTransitions'
     runs = root / 'runs'
 
 
