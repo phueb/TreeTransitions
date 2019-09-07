@@ -1,6 +1,5 @@
 from sklearn.metrics.pairwise import cosine_similarity
 import numpy as np
-import yaml
 import pandas as pd
 import sys
 
@@ -13,6 +12,8 @@ from treetransitions import config
 class Params:
 
     def __init__(self, param2val):
+        param2val = param2val.copy()
+
         self.param_name = param2val.pop('param_name')
         self.job_name = param2val.pop('job_name')
 
