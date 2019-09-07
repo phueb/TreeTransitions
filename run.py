@@ -28,12 +28,27 @@ def run_on_cluster():
         assert config.RemoteDirs.runs.exists()  # this throws error if host is down
 
         # execute job
-        main(param2val)
+        dfs = main(param2val)  # name the returned dataframes using 'name' attribute
+
+        if config.Eval.debug:
+            for df in dfs:
+                print(df.name)
+                print(df)
+            raise SystemExit('Debugging: Not saving results')
+
+        # save dfs
+        dst = config.RemoteDirs.runs / param2val['param_name'] / param2val['job_name']
+        if not dst.exists():
+            dst.mkdir(parents=True)
+        for df in dfs:
+            with (dst / '{}.csv'.format(df.name)).open('w') as f:
+                df.to_csv(f, index=False)  # index needs to be set to False for this particular project
 
         # write param2val to shared drive
         param2val_p = config.RemoteDirs.runs / param2val['param_name'] / 'param2val.yaml'
+        print('Saving param2val to:\n{}'.format(param2val_p))
         if not param2val_p.exists():
-            param2val_p['job_name'] = None
+            param2val['job_name'] = None
             with param2val_p.open('w', encoding='utf8') as f:
                 yaml.dump(param2val, f, default_flow_style=False, allow_unicode=True)
 
@@ -45,15 +60,12 @@ def run_on_host():
     """
     run jobs on the local host for testing/development
     """
-    from ludwigcluster.utils import list_all_param2vals
-    #
-    for param2val in list_all_param2vals(param2requests, param2default,
-                                         update_d={'param_name': 'test', 'job_name': 'test'}):
-        if config.Eval.debug:
-            param2val['num_seqs'] = 1 * 10 ** 3
-            param2val['num_partitions'] = 2
-            param2val['num_iterations'] = 1
-            print('DEBUG=True: num_seqs={}'.format(param2val['num_seqs']))
+    from ludwigcluster.client import Client
+
+    project_name = config.LocalDirs.src.name
+    client = Client(project_name, param2default)
+    for param2val in client.list_all_param2vals(param2requests,
+                                                update_d={'param_name': 'test', 'job_name': 'test'}):
         main(param2val)
         raise SystemExit('Finished running first job.\n'
                          'No further jobs will be run as results would be over-written')

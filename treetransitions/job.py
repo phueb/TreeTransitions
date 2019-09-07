@@ -79,18 +79,10 @@ def main(param2val):
             # train
             srn.train_partition(part_id_seqs, verbose=False)  # a seq is a window (e.g. a bi-gram)
 
-    #  save results to shared drive
-    bas_p = config.RemoteDirs.runs / param2val['param_name'] / param2val['job_name'] / 'num_cats2bas.csv'
-    if not bas_p.parent.exists():
-        bas_p.parent.mkdir(parents=True)
+    # to pandas
     bas_df = pd.DataFrame(num_cats2bas)
-    with bas_p.open('w') as f:
-        bas_df.to_csv(f, index=False)
-
-    # write num_cats2max_ba to shared drive
-    max_ba_p = config.RemoteDirs.runs / param2val['param_name'] / param2val['job_name'] / 'num_cats2max_ba.csv'
-    if not max_ba_p.parent.exists():
-        max_ba_p.parent.mkdir(parents=True)
+    bas_df.name = 'num_cats2bas'
     max_ba_df = pd.DataFrame(toy_data.num_cats2max_ba, index=[0])  # need index because values are ints not lists
-    with max_ba_p.open('w', encoding='utf8') as f:
-        max_ba_df.to_csv(f, index=False)
+    max_ba_df.name = 'num_cats2max_ba'
+
+    return bas_df, max_ba_df
