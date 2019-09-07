@@ -7,19 +7,36 @@ import sys
 from treetransitions.toy_data import ToyData
 from treetransitions.utils import calc_ba
 from treetransitions.rnn import RNN
-from treetransitions.params import ObjectView
 from treetransitions import config
 
 
-def main_job(param2val):
-    # check if host is down - do this before any computation
-    assert config.RemoteDirs.runs.exists()    # this throws error if host is down
+class Params:
+
+    def __init__(self, param2val):
+        self.param_name = param2val.pop('param_name')
+        self.job_name = param2val.pop('job_name')
+
+        self.param2val = param2val
+
+    def __getattr__(self, name):
+        if name in self.param2val:
+            return self.param2val[name]
+        else:
+            raise AttributeError('No such attribute')
+
+    def __str__(self):
+        res = ''
+        for k, v in sorted(self.param2val.items()):
+            res += '{}={}\n'.format(k, v)
+        return res
+
+
+def main(param2val):
 
     # params
-    params = ObjectView(param2val.copy())
-    for k, v in param2val.items():
-        print('{}={}'.format(k, v))
-    print()
+    params = Params(param2val)
+    print(params)
+    sys.stdout.fush()
 
     toy_data = ToyData(params, max_ba=False if config.Eval.debug else True)  # True to enable plotting of max_ba
 
@@ -76,10 +93,3 @@ def main_job(param2val):
     max_ba_df = pd.DataFrame(toy_data.num_cats2max_ba, index=[0])  # need index because values are ints not lists
     with max_ba_p.open('w', encoding='utf8') as f:
         max_ba_df.to_csv(f, index=False)
-
-    # write param2val to shared drive
-    param2val_p = config.RemoteDirs.runs / param2val['param_name'] / 'param2val.yaml'
-    if not param2val_p.exists():
-        param2val['job_name'] = None
-        with param2val_p.open('w', encoding='utf8') as f:
-            yaml.dump(param2val, f, default_flow_style=False, allow_unicode=True)
