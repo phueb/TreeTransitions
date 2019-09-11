@@ -6,9 +6,10 @@ import numpy as np
 from itertools import combinations
 from scipy import stats
 
-from ludwigcluster.utils import list_all_param2vals
 from treetransitions import config
-from treetransitions.params import Params as MatchParams
+from treetransitions.params import param2default, param2requests
+
+from ludwigcluster.client import Client
 
 
 VERBOSE = True
@@ -27,29 +28,6 @@ PLOT_NUM_CATS_LIST = [32]
 TOLERANCE = 0.05
 PLOT_COMPARISON = True
 CONFIDENCE = 0.95
-
-
-default_dict = MatchParams.__dict__.copy()
-MatchParams.num_non_probes_list = [[512, 512, 512]]
-MatchParams.legal_probs = [[1.0, 0.5], [0.5, 1.0]]
-MatchParams.mutation_prob = [0.01]
-
-
-def gen_param_ps(param2requested, param2default):
-    compare_params = [param for param, val in param2requested.__dict__.items()
-                      if val != param2default[param]]
-    for param_p in sorted(config.RemoteDirs.runs.glob('param_*')):
-        print('Checking {}...'.format(param_p))
-        with (param_p / 'param2val.yaml').open('r') as f:
-            param2val = yaml.load(f, Loader=yaml.FullLoader)
-        param2val = param2val.copy()
-        match_param2vals = list_all_param2vals(param2requested, add_names=False)
-        del param2val['param_name']
-        del param2val['job_name']
-        if param2val in match_param2vals:
-            print('Param2val matches')
-            label = '\n'.join(['{}={}'.format(param, param2val[param]) for param in compare_params])
-            yield param_p, label
 
 
 def make_title(param2val):
@@ -182,7 +160,7 @@ def plot_ba_trajs(results, fontsize=16):
 
 
 def gen_results_from_disk():
-    for param_p, label in gen_param_ps(MatchParams, default_dict):
+    for param_p, label in client.gen_param_ps(param2requests):
         bas_df = get_dfs(param_p, 'num_cats2bas')
         max_ba_dfs = get_dfs(param_p, 'num_cats2max_ba')
         num_cats2ba_means = to_dict(bas_df, sem=False)
@@ -199,6 +177,9 @@ def gen_results_from_disk():
 
 
 if __name__ == '__main__':
+
+    client = Client(config.RemoteDirs.root.name, param2default)
+
     all_results = list(gen_results_from_disk())
 
     if not PLOT_COMPARISON:
