@@ -120,7 +120,7 @@ class ToyData:
     def make_complete_legals_mat(self, legal_prob=1.0):  # modify legal_prob only for plotting
         """
         x-words are in column, y-words are in rows.
-        this matrix is not affected by legal_probs
+        this matrix is not affected by legal_probabilities
         """
         print('Making complete_legals_mat...')
         xws = np.concatenate([words[0] for words in self.name2words.values()])
@@ -247,7 +247,7 @@ class ToyData:
         num_chunks = self.params.num_partitions * num_processes
         num_seqs_in_chunk = self.params.num_seqs // num_chunks
         linspace = np.repeat(
-            np.linspace(*self.params.legal_probs, self.params.num_partitions, endpoint=True),
+            np.linspace(*self.params.legal_probabilities, self.params.num_partitions, endpoint=True),
             num_processes).round(2)
         print('linspace:')
         print(linspace)

@@ -92,10 +92,8 @@ for mat in [part1_legals_mat, part2_legals_mat]:
     print('{:>,}=sum_diag_xtx'.format(sum_diag_xtx))
     print('{:,}=sum_eigenvalues'.format(np.sum(eigen_values)))
     print('{:,}=sum_squared(si)'.format(np.sum(squared_singular_values)))
-
-
-
     print()
+
     # collect
     ys.append(s)
 

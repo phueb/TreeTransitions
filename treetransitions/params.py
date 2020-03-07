@@ -1,13 +1,17 @@
 
+
+param2requests = {'legal_probabilities': [(0.5, 1.0), (1.0, 0.5)]}
+
+
 param2default= {
     'non_probes_hierarchy': False,
-    'legal_probs': [0.5, 1.0],  # probability of legal sequence being counted as legal
-    'num_non_probes_list': [512, 512, 512],  # there can be multiple non-probe categories
+    'legal_probabilities': (0.5, 1.0),  # probability of legal sequence being counted as legal
+    'num_non_probes_list': (512, 512, 512),  # there can be multiple non-probe categories
     'num_probes': 512,
     'num_contexts': 512,  # a smaller number reduces category structure of probes
     'num_seqs': 5 * 10 ** 6,
     'mutation_prob': 0.01,
-    'num_cats_list': [2, 4, 8, 16, 32],
+    'num_cats_list': (2, 4, 8, 16, 32),
     'num_iterations': 20,
     'num_partitions': 2,
     'rnn_type': 'srn',
@@ -18,11 +22,9 @@ param2default= {
     'w': 'embeds'
 }
 
-
-param2requests = {'legal_probs': [[0.5, 1.0], [1.0, 0.5]]}
-
 # check
-for probs in param2requests['legal_probs']:
+for probs in param2requests['legal_probabilities']:
     if probs[0] != probs[1]:
-        for num_partitions in param2requests['num_partitions']:
-            assert num_partitions != 1  # no incremental structure without num_partitions > 1
+        if 'num_partitions' in param2requests:
+            for num_partitions in param2requests['num_partitions']:
+                assert num_partitions != 1  # no incremental structure without num_partitions > 1

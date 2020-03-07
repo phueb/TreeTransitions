@@ -1,3 +1,4 @@
+attrs
 matplotlib
 cytoolz
 seaborn
@@ -12,3 +13,4 @@ python-dotenv
 sortedcontainers
 numpy==1.16.0
 torch
+https://github.com/phueb/Ludwig/archive/v2.1.2.tar.gz

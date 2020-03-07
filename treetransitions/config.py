@@ -4,15 +4,9 @@ from pathlib import Path
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
 
-class RemoteDirs:
-    root = Path('/media/research_data') / 'TreeTransitions'
-    runs = root / 'runs'
-
-
-class LocalDirs:
+class Dirs:
     root = Path(__file__).parent.parent
     src = root / 'treetransitions'
-    runs = root / '{}_runs'.format(src.name)
 
 
 class Eval:
