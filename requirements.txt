@@ -1,9 +1,8 @@
-attrs
 matplotlib
 cytoolz
 seaborn
 PyYAML
-pandas==0.23.4
+pandas
 pyprind
 sklearn
 scipy
@@ -11,6 +10,6 @@ bayesian-optimization==0.6
 tables
 python-dotenv
 sortedcontainers
-numpy==1.16.0
+numpy
 torch
-https://github.com/phueb/Ludwig/archive/v2.1.2.tar.gz
+https://github.com/phueb/Ludwig/archive/v4.0.6.tar.gz
