@@ -12,7 +12,7 @@ param2requests = {
 param2default = {
 
     'num_x_words': 512,  # also the number of y-words
-    'num_cats_list': (2, 4),  # (2, 4, 8, 16, 32),
+    'num_cats_list': (2, 4, 8, 16, 32),
 
     # training
     'num_iterations': 20,

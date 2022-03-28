@@ -1,11 +1,12 @@
+from typing import List
 import numpy as np
 from scipy.cluster.hierarchy import linkage, dendrogram
 import matplotlib.pyplot as plt
 from cytoolz import itertoolz
 from matplotlib.colors import to_hex
-from sklearn.metrics.pairwise import cosine_similarity
 
 from treetransitions.params import Params
+from treetransitions.figs import plot_heatmap
 
 
 class ToyData:
@@ -26,12 +27,7 @@ class ToyData:
 
         # the probability of co-occurrence of x and y words
         # this is where the hierarchical structure of the data is created
-        ul = lr = np.random.random((self.num_x // 2, self.num_y // 2)) * 1.0
-        ll = ur = np.random.random((self.num_x // 2, self.num_y // 2)) * 0.5
-        self.p_mat = np.block([
-            [ul, ur],
-            [ll, lr],
-        ])
+        self.p_mat = self.make_p_mat()
 
         # linkage
         self.z = self.make_z()
@@ -41,9 +37,56 @@ class ToyData:
         # sequences
         self.id_sequences_mat = None  # TODO
 
-        # plot
-        self.num_cats2cmap = {num_cats: plt.cm.get_cmap('hsv', num_cats + 1) for num_cats in params.num_cats_list}
-        self.num_cats2probe2color = {num_cats: self.make_probe2color(num_cats) for num_cats in params.num_cats_list}
+        # assign color map to each category structure
+        self.num_cats2color_map = {num_cats: plt.cm.get_cmap('hsv', num_cats + 1)
+                                   for num_cats in params.num_cats_list}
+
+    def make_p_mat(self,
+                   plot: bool = False,
+                   ) -> np.array:
+        """
+        return a matrix of probabilities.
+        the value at index i and j defines the probability that x-word i and y-word j co-occur in the data.
+        """
+
+        res = np.ones((self.num_x, self.num_y), dtype=float)
+
+        s_val = 1.0  # the value to be subtracted
+
+        for num_cats in self.params.num_cats_list:
+            print(f'Generating category structure with num_cats={num_cats}')
+
+            num_subtractions = num_cats // 2
+            sub_square_size = self.num_x // num_subtractions
+
+            s_val -= 0.1  # the value to be subtracted is reduced at each lower level in the hierarchy
+
+            assert 0.0 <= s_val <= 1.0
+
+            for cat_id in range(num_subtractions):
+
+                # make s
+                # note: s is a matrix with 4 quadrants, and is used to "carve out" the big matrix
+                ul = lr = np.ones((sub_square_size // 2, sub_square_size // 2)) * 0.0
+                ll = ur = np.ones((sub_square_size // 2, sub_square_size // 2)) * s_val
+                s = np.block([
+                    [ul, ur],
+                    [ll, lr],
+                ])
+
+                # subtract
+                start = sub_square_size * cat_id
+                p_mat_sub_square = res[start: start + sub_square_size, start: start + sub_square_size]
+                p_mat_sub_square -= s
+
+                # make sure all values are valid probabilities
+                assert 0.0 <= np.min(res) <= 1.0
+                assert 0.0 <= np.max(res) <= 1.0
+
+            if plot:
+                plot_heatmap(res, [], [])
+
+        return res
 
     @staticmethod
     def make_words(prefix: str,
@@ -57,10 +100,14 @@ class ToyData:
                metric='euclidean',
                ):
         # careful: idx1 and idx2 in res are not integers (they are floats)
-        res = linkage(cosine_similarity(self.p_mat), metric=metric, method=method)  # TODO cluster the p_mat?
+        res = linkage(self.p_mat, metric=metric, method=method)
         return res
 
-    def get_all_probes_in_tree(self, res1, z, node_id):
+    def get_all_xws_in_tree(self,
+                            ordered_xws_: List[str],
+                            z: linkage,
+                            node_id: int,
+                            ):
         """
         # z should be the result of linkage,which returns an array of length n - 1
         # giving you information about the n - 1 cluster merges which it needs to pairwise merge n clusters.
@@ -68,32 +115,38 @@ class ToyData:
         # a row in z is: [idx1, idx2, distance, count]
         # all idx >= len(X) actually refer to the cluster formed in Z[idx - len(X)]
         """
+
         num_xws = len(self.xws)
         try:
-            p = self.xws[node_id.astype(int)]
+            p = self.xws[node_id]
         except IndexError:  # in case idx does not refer to leaf node (then it refers to cluster)
-            new_node_id1 = z[node_id.astype(int) - num_xws][0]
-            new_node_id2 = z[node_id.astype(int) - num_xws][1]
-            self.get_all_probes_in_tree(res1, z, new_node_id1)
-            self.get_all_probes_in_tree(res1, z, new_node_id2)
+            new_node_id1 = z[node_id - num_xws][0]
+            new_node_id2 = z[node_id - num_xws][1]
+            self.get_all_xws_in_tree(ordered_xws_, z, int(new_node_id1))
+            self.get_all_xws_in_tree(ordered_xws_, z, int(new_node_id2))
         else:
-            res1.append(p)
+            ordered_xws_.append(p)
 
     def make_probe2cat(self, num_cats):
+        """
+        use linkage of p_mat to assign category-membership to x-words
+
+        Note:
+            this is strictly speaking, not necessary, but is cool
+        """
 
         # find cluster (identified by idx1 and idx2) with num_x_words nodes beneath it
-        for row in self.z:
-            idx1, idx2, dist, count = row
+        for idx1, idx2, dist, count in self.z:
             if count == self.params.num_x_words:
                 break
         else:
             raise RuntimeError('Did not find any cluster with count={}'.format(self.params.num_x_words))
 
-        # get xwords in correct order - tree structure is preserved in order of how probes are retrieved from tree
+        # get x-words in correct order - tree structure is preserved in order of how probes are retrieved from tree
         ordered_xws = []
-        for idx in [idx1, idx2]:
-            self.get_all_probes_in_tree(ordered_xws, self.z, idx)
-        print('Collected {} probes'.format(len(ordered_xws)))
+        for node_id in [idx1, idx2]:
+            self.get_all_xws_in_tree(ordered_xws, self.z, int(node_id))
+        print('Collected {} x-words'.format(len(ordered_xws)))
         assert set(self.xws) == set(ordered_xws)
 
         #
@@ -102,7 +155,7 @@ class ToyData:
         assert num_members.is_integer()
         num_members = int(num_members)
 
-        #
+        # partition x-words into categories
         assert num_cats % 2 == 0
         res = {}
         for cat, cat_probes in enumerate(itertoolz.partition_all(num_members, ordered_xws)):
@@ -111,22 +164,30 @@ class ToyData:
 
         return res
 
-    def make_probe2color(self, num_cats):
-        res = {}
-        cmap = self.num_cats2cmap[num_cats]
+    def plot_tree(self,
+                  num_cats: int,
+                  ):
+        """
+        plot dendrogram with same-category probes shown in same color
+        """
+
+        # assign each probe a color
+        probe2color = {}
+        color_map = self.num_cats2color_map[num_cats]
         for p in self.xws:
             cat = self.num_cats2probe2cat[num_cats][p]
-            res[p] = to_hex(cmap(cat))
-        return res
+            probe2color[p] = to_hex(color_map(cat))
 
-    def plot_tree(self, num_cats):
-        probe2color = self.num_cats2probe2color[num_cats]
+        # define the link_color_func
         link2color = {}
         for i, i12 in enumerate(self.z[:, :2].astype(int)):
-            c1, c2 = (link2color[x] if x > len(self.z)
-                      else probe2color[self.xws[x.astype(int)]]
+            c1, c2 = (link2color[x] if x > len(self.z) else probe2color[self.xws[x.astype(int)]]
                       for x in i12)
-            link2color[i + 1 + len(self.z)] = c1 if c1 == c2 else 'grey'
+            if c1 == c2:
+                link2color[i + 1 + len(self.z)] = c1
+            else:
+                link2color[i + 1 + len(self.z)] = 'grey'
+
         # plot
         fig, ax = plt.subplots(figsize=(10, 5), dpi=None)
         ax.spines['right'].set_visible(False)

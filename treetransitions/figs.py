@@ -23,7 +23,10 @@ def plot_heatmap(mat: np.array,
     ax.imshow(mat,
               aspect='equal',
               cmap='jet',
-              interpolation='nearest')
+              interpolation='nearest',
+              vmax=1.0,
+              vmin=0.0,
+              )
     ax.set_xlabel(x_label or 'Y-Words', fontsize=fontsize)
     ax.set_ylabel(y_label or 'X-Words', fontsize=fontsize)
 
