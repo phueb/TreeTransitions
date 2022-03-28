@@ -4,7 +4,7 @@ from dataclasses import dataclass
 
 param2requests = {
 
-    'num_hidden': [64, 128],
+    'num_hidden': [64, 32],
 
 }
 

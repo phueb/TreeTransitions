@@ -1,8 +1,7 @@
-import yaml
-from typing import List
+import numpy as np
+from typing import Dict, Tuple
 import pandas as pd
 from pathlib import Path
-from scipy import stats
 
 from ludwig.results import gen_param_paths
 
@@ -12,7 +11,6 @@ from treetransitions import config
 from treetransitions.utils import correct_artifacts
 
 TOLERANCE = 0.05
-PLOT_NUM_CATS_LIST = (2, 4, 8, 16, 32,)
 
 
 def get_series_list(param_path: Path,
@@ -43,15 +41,22 @@ def get_series_list(param_path: Path,
 
 
 def to_dict(concatenated: pd.DataFrame,
-            do_sem: bool,
-            ):
+            ) -> Tuple[Dict[int, np.array],
+                       Dict[int, np.array]]:
+    """
 
-    grouped = concatenated.groupby(concatenated.index)
-    df = grouped.mean() if not do_sem else grouped.agg(stats.sem)
-    res = df.to_dict(orient='list')
-    res = {int(k[3:]): v for k, v in res.items()}  # convert key to float - to be able to sort
+    return two dicts. each has num_cats as key, and a list of statistics as values
 
-    return res
+    """
+    num_cats2avg_ba = {}
+    num_cats2std_ba = {}
+    for col_name in set(concatenated.columns):
+        print(col_name)
+        mat = concatenated[col_name].values  # all columns with col_name
+        num_cats2avg_ba[int(col_name[3:])] = mat.mean(axis=1)
+        num_cats2std_ba[int(col_name[3:])] = mat.std(axis=1)
+
+    return num_cats2avg_ba, num_cats2std_ba
 
 
 # get results
@@ -70,20 +75,13 @@ for param_path, label in gen_param_paths(project_name,
     concatenated_df = pd.concat(series_list, axis=1)
     eval_steps = concatenated_df.index.values
 
-    print(concatenated_df)
-
     # statistics
-    num_cats2ba_means = to_dict(concatenated_df, do_sem=False)
-    num_cats2ba_sems = to_dict(concatenated_df, do_sem=True)
-    summary = (num_cats2ba_means, num_cats2ba_sems, eval_steps, num_dfs)
-
-    # with (param_path / 'param2val.yaml').open('r') as f:
-    #     param2val = yaml.load(f, Loader=yaml.FullLoader)
+    num_cats2avg_ba, num_cats2std_ba = to_dict(concatenated_df)
+    summary = (num_cats2avg_ba, num_cats2std_ba, eval_steps, num_dfs)
 
     # plot
     plot_ba_trajectories(summary,
                          label,
-                         PLOT_NUM_CATS_LIST,
                          )
 
 
