@@ -7,36 +7,6 @@ from scipy.cluster.hierarchy import linkage, dendrogram
 from scipy.spatial.distance import pdist
 
 
-def make_term_by_window_mat(word_seqs_mat, toy_data):
-    """
-    keep y-words (which always come in last position in sequence, in the rows.
-    this order matches legals_mat and term-by-window matrix obtained calculated in CHILDES-hub.
-    transposition only slightly changes results of SVD
-    """
-    assert word_seqs_mat.shape[1] == 2  # works with bi-grams only
-    #
-    all_x_words = []
-    all_y_words = []
-    for name, (xws, yws) in toy_data.name2words.items():
-        all_x_words.extend(xws)
-        all_y_words.extend(yws)
-    #
-    num_xws = len(all_x_words)
-    num_yws = len(all_y_words)
-    res = np.zeros((num_yws, num_xws))
-    print('Making term_by_window_mat with shape={}...'.format(res.shape))
-    for xw, yw in word_seqs_mat:
-        res[all_y_words.index(yw), all_x_words.index(xw)] += 1  # put yws in rows like in legals_mat
-    return res, all_x_words, all_y_words
-
-
-def calc_kl_divergence(p, q, epsilon=0.00001):
-    pe = p + epsilon
-    qe = q + epsilon
-    divergence = np.sum(pe * np.log2(pe / qe))
-    return divergence
-
-
 def calc_ba(probe_sims, probes, probe2cat, num_opt_init_steps=1, num_opt_steps=10):
     def calc_signals(_probe_sims, _labels, thr):  # vectorized algorithm is 20X faster
         probe_sims_clipped = np.clip(_probe_sims, 0, 1)
@@ -86,12 +56,6 @@ def calc_ba(probe_sims, probes, probe2cat, num_opt_init_steps=1, num_opt_steps=1
     # use best_thr
     results = calc_probes_ba(best_thr)
     res = np.mean(results)
-    return res
-
-
-def to_corr_mat(data_mat):
-    zscored = stats.zscore(data_mat, axis=0, ddof=1)
-    res = np.matmul(zscored.T, zscored)  # it matters which matrix is transposed
     return res
 
 

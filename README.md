@@ -1,17 +1,13 @@
-# TreeTransitions
-Research code to test hypotheses about recurrent neural networks learning hierarchically structured transition probabilities 
+# TreeTransitions 
 
-## Usage
+## About
 
-To run the default configuration, call `treetransitions.job.main` like so:
+Create artificial data to probe RNN language model learning dynamics.
 
-```python
-from treetransitions.job import main
-from treetransitions.params import param2default
+The data that is generated consists of sequences of two items. 
+Each item is drawn from two disjoint vocabularies, A and B, which are related to each other hierarchically.
 
-main(param2default)  # runs the experiment in default configuration
-```
 
 ## Compatibility
 
-Developed on Ubuntu 16.04 using Python3.7
+Developed on Ubuntu 18.04 using Python3.7

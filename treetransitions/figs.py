@@ -5,26 +5,35 @@ from scipy import stats
 from typing import Optional, Tuple, List
 
 
-def plot_heatmap(mat, ytick_labels, xtick_labels, title='', xlabel='', ticklabel_fs=1, fontsize=16):
+def plot_heatmap(mat: np.array,
+                 y_tick_labels: List[str],
+                 x_tick_labels: List[str],
+                 title: str = '',
+                 x_label: str = '',
+                 tick_label_font_size=1,
+                 fontsize=16,
+                 ):
+
     fig, ax = plt.subplots(figsize=(8, 8), dpi=None)
     plt.title(title, fontsize=fontsize)
+
     # heatmap
     print('Plotting heatmap...')
     ax.imshow(mat,
               aspect='equal',
               cmap='jet',
               interpolation='nearest')
-    ax.set_xlabel(xlabel, fontsize=fontsize)
+    ax.set_xlabel(x_label, fontsize=fontsize)
     ax.set_ylabel('Context words', fontsize=fontsize)
 
     # ticks
     num_cols = len(mat.T)
     ax.set_xticks(np.arange(num_cols))
-    ax.xaxis.set_ticklabels(xtick_labels, rotation=90, fontsize=ticklabel_fs)
+    ax.xaxis.set_ticklabels(x_tick_labels, rotation=90, fontsize=tick_label_font_size)
     num_rows = len(mat)
     ax.set_yticks(np.arange(num_rows))
-    ax.yaxis.set_ticklabels(ytick_labels,   # no need to reverse (because no extent is set)
-                            rotation=0, fontsize=ticklabel_fs)
+    ax.yaxis.set_ticklabels(y_tick_labels,  # no need to reverse (because no extent is set)
+                            rotation=0, fontsize=tick_label_font_size)
 
     # remove tick lines
     lines = (ax.xaxis.get_ticklines() +
@@ -135,44 +144,3 @@ def make_comparison_title(param2val1, param2val2, solid_line_id):
         if val1 != val2:
             res += '{}={} ({}) vs. {} ({})\n'.format(param, val1, solid1, val2, solid2)
     return res
-
-
-def plot_comparison(ys, params, num_singular_values, fontsize=16):
-    fig, ax = plt.subplots(1, figsize=(5, 5))
-    plt.title('number of syntactic categories={}\nnumber of context words={}'.format(
-        len(params.num_non_probes_list), params.num_contexts))
-    ax.set_ylabel('Singular Value', fontsize=fontsize)
-    ax.set_xlabel('Singular Dimension', fontsize=fontsize)
-    ax.spines['right'].set_visible(False)
-    ax.spines['top'].set_visible(False)
-    ax.tick_params(axis='both', which='both', top=False, right=False)
-    x = np.arange(num_singular_values)
-
-    # plot
-    labels = iter([r'$P_1={}$'.format(sp) for sp in params.legal_probabilities])
-    for n, y in enumerate(ys):
-        ax.plot(x, y, label=next(labels) or 'partition {}'.format(n + 1), linewidth=2)
-    ax.legend(loc='upper right', frameon=False, fontsize=fontsize)
-    plt.tight_layout()
-
-    plt.show()
-
-
-def plot_ba_trajectories_simple(tr2y, x, title, fontsize=16):
-    fig, ax = plt.subplots(figsize=(8, 5), dpi=None)
-    plt.title(title, fontsize=fontsize)
-    ax.set_xlabel('Number of Sequences in Partition', fontsize=fontsize)
-    ax.set_ylabel('Balanced Accuracy', fontsize=fontsize)
-    ax.spines['right'].set_visible(False)
-    ax.spines['top'].set_visible(False)
-    ax.tick_params(axis='both', which='both', top=False, right=False)
-    ax.set_ylim([0.5, 0.7])
-
-    # plot
-    for tr, y in tr2y.items():
-        ax.plot(x, y, label=r'$P_1$={}'.format(tr))
-
-    plt.legend(frameon=False, loc='lower right', fontsize=fontsize)
-    plt.tight_layout()
-
-    plt.show()

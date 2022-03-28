@@ -1,30 +1,45 @@
+from typing import Tuple
+from dataclasses import dataclass
 
 
-param2requests = {'legal_probabilities': [(0.5, 1.0), (1.0, 0.5)]}
+param2requests = {
 
 
-param2default= {
-    'non_probes_hierarchy': False,
-    'legal_probabilities': (0.5, 1.0),  # probability of legal sequence being counted as legal
-    'num_non_probes_list': (512, 512, 512),  # there can be multiple non-probe categories
-    'num_probes': 512,
-    'num_contexts': 512,  # a smaller number reduces category structure of probes
-    'num_seqs': 5 * 10 ** 6,
-    'mutation_prob': 0.01,
+
+}
+
+
+param2default = {
+
     'num_cats_list': (2, 4, 8, 16, 32),
     'num_iterations': 20,
     'num_partitions': 2,
     'rnn_type': 'srn',
-    'mb_size': 64,
+    'batch_size': 64,
     'learning_rate': 0.03,  # 0.03-adagrad 0.3-sgd
-    'num_hiddens': 128,
+    'num_hidden': 128,
     'optimization': 'adagrad',  # don't forget to change learning rate
-    'w': 'embeds'
 }
 
-# check
-for probs in param2requests['legal_probabilities']:
-    if probs[0] != probs[1]:
-        if 'num_partitions' in param2requests:
-            for num_partitions in param2requests['num_partitions']:
-                assert num_partitions != 1  # no incremental structure without num_partitions > 1
+
+@dataclass
+class Params(object):
+    num_cats_list: Tuple[int, ...]
+    num_iterations: int
+    num_partitions: int
+    rnn_type: str
+    batch_size: int
+    learning_rate: float
+    num_hidden: int
+    optimization: str
+
+    @classmethod
+    def from_param2val(cls, param2val):
+        """
+        instantiate class.
+        exclude keys from param2val which are added by Ludwig.
+        they are relevant to job submission only.
+        """
+        kwargs = {k: v for k, v in param2val.items()
+                  if k not in ['job_name', 'param_name', 'project_path', 'save_path']}
+        return cls(**kwargs)

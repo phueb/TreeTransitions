@@ -1,11 +1,12 @@
+"""
+compute singular values for term-by-window co-occurrence matrices defined by the legals matrices belows.
+"""
+
 import numpy as np
 from sklearn.preprocessing import StandardScaler
 
 import matplotlib.pyplot as plt
 
-"""
-compute singular values for term-by-window co-occurrence matrices defined by the legals matrices belows.
-"""
 
 NUM_SEQUENCES = 100000  # each partition has exactly the same number of sequences (this must be true)
 

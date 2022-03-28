@@ -21,7 +21,7 @@ class RNN:
         self.init_range = init_range
         #
         self.model = TorchRNN(self.params.rnn_type, self.num_layers,
-                              self.input_size, self.params.num_hiddens, self.init_range)
+                              self.input_size, self.params.num_hidden, self.init_range)
         self.model.cuda()  # call this before constructing optimizer
         self.criterion = torch.nn.CrossEntropyLoss()
         if self.params.optimization == 'adagrad':
@@ -32,7 +32,7 @@ class RNN:
             raise AttributeError('Invalid arg to "optimizer"')
 
     def gen_batches(self, seqs):
-        size = len(seqs) / self.params.mb_size
+        size = len(seqs) / self.params.batch_size
         assert size.is_integer()
         for batch in np.vsplit(seqs, size):
             yield batch
@@ -53,7 +53,7 @@ class RNN:
             # print(x.shape)
 
             # forward step
-            inputs = torch.cuda.LongTensor(x.T)  # requires [num_steps, mb_size]
+            inputs = torch.cuda.LongTensor(x.T)  # requires [num_steps, batch_size]
             targets = torch.cuda.LongTensor(y)
             hidden = self.model.init_hidden()  # must happen, because batch size changes from seq to seq
             logits = self.model(inputs, hidden)
@@ -89,7 +89,7 @@ class RNN:
             x = batch[:, :-1]
             y = batch[:, -1]
             #
-            inputs = torch.cuda.LongTensor(x.T)  # requires [num_steps, mb_size]
+            inputs = torch.cuda.LongTensor(x.T)  # requires [num_steps, batch_size]
             targets = torch.cuda.LongTensor(y)
             hidden = self.model.init_hidden()  # this must be here to re-init graph
             logits = self.model(inputs, hidden)
@@ -105,7 +105,7 @@ class RNN:
         self.model.eval()  # protects from dropout
         self.model.batch_size = len(x)
         #
-        inputs = torch.cuda.LongTensor(x.T)  # requires [num_steps, mb_size]
+        inputs = torch.cuda.LongTensor(x.T)  # requires [num_steps, batch_size]
         hidden = self.model.init_hidden()  # this must be here to re-init graph
         res = self.model(inputs, hidden).detach().cpu().numpy()
         return res
@@ -168,7 +168,7 @@ class TorchRNN(torch.nn.Module):
                                                      self.hidden_size).zero_())
         return res
 
-    def forward(self, inputs, hidden):  # expects [num_steps, mb_size] tensor
+    def forward(self, inputs, hidden):  # expects [num_steps, batch_size] tensor
         embeds = self.wx(inputs)
         outputs, hidden = self.rnn(embeds, hidden)  # this returns all time steps
         final_outputs = torch.squeeze(outputs[-1])
