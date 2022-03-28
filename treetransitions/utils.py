@@ -6,6 +6,8 @@ from scipy import stats
 from scipy.cluster.hierarchy import linkage, dendrogram
 from scipy.spatial.distance import pdist
 
+from results.plot_ba_trajectories import TOLERANCE
+
 
 def calc_ba(probe_sims, probes, probe2cat, num_opt_init_steps=1, num_opt_steps=10):
     def calc_signals(_probe_sims, _labels, thr):  # vectorized algorithm is 20X faster
@@ -85,3 +87,16 @@ def cluster(m, original_row_words=None, original_col_words=None):
         row_labels = np.array(original_row_words)[dg0['leaves']]
         col_labels = np.array(original_col_words)[dg1['leaves']]
         return res, row_labels, col_labels
+
+
+def correct_artifacts(df):
+    """
+    remove negative-going dips in balanced accuracy curves
+    """
+    for bas in df.values.T:
+        num_bas = len(bas)
+        for i in range(num_bas - 2):
+            val1, val2, val3 = bas[[i, i+1, i+2]]
+            if (val1 - TOLERANCE) > val2 < (val3 - TOLERANCE):
+                bas[i+1] = np.mean([val1, val3])
+    return df

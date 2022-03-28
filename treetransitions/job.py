@@ -61,7 +61,7 @@ def main(param2val):
     for name, col in name2col.items():
         print(f'Making pandas series with name={name} and length={len(col)}')
         s = pd.Series(col, index=eval_steps)
-        s.index.name = name
+        s.index.name = 'step'
         s.name = name
         series_list.append(s)
 
