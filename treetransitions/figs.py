@@ -46,49 +46,34 @@ def plot_heatmap(mat: np.array,
     plt.show()
 
 
-def plot_ba_trajectories(results: Tuple[Tuple[dict, dict, dict, dict, int], ...],
+def plot_ba_trajectories(summary: Tuple[dict, dict, dict, int],
                          plot_num_cats_list: Tuple[int],
                          y_max: float = 1.0,
                          x_step: int = 5,
                          is_grid: bool = False,
-                         plot_max_ba: bool = False,
                          confidence: float = 0.95,
                          solid_line_id: int = 0,  # 0 or 1 to flip which line is solid
                          legend: bool = True,
                          title: Optional[str] = None,
-                         fontsize=16):
+                         fontsize: int = 16,
+                         fig_size: Tuple[int, int] = (8, 8),
+                         ):
 
-    # read results
-    if len(results) == 1:
-        num_cats2ba_means1, num_cats2ba_sems1, num_cats2max_ba1, param2val1, num_results1 = results[0]
-        if title is None:
-            title_base = ''
-            for param, val in sorted(param2val1.items(), key=lambda i: i[0]):
-                title_base += '{}={}\n'.format(param, val)
-            title = title_base + '\nn={}'.format(num_results1)
-        d1s = [num_cats2ba_means1]
-        d2s = [num_cats2ba_sems1]
-        d3s = [num_cats2max_ba1]
-        dofs = [num_results1 - 1]
-        figsize = (8, 8)
-    elif len(results) == 2:
-        num_cats2ba_means1, num_cats2ba_sems1, num_cats2max_ba1, param2val1, num_results1 = results[0]
-        num_cats2ba_means2, num_cats2ba_sems2, num_cats2max_ba2, param2val2, num_results2 = results[1]
-        if title is None:
-            title = make_comparison_title(param2val1, param2val2, solid_line_id)
-            title += '\nn={}'.format(min(num_results1, num_results2))
-        assert param2val1['num_partitions'] == param2val2['num_partitions']
-        assert param2val1['num_iterations'] == param2val2['num_iterations']
-        d1s = [num_cats2ba_means1, num_cats2ba_means2]
-        d2s = [num_cats2ba_sems1, num_cats2ba_sems2]
-        d3s = [num_cats2max_ba1, num_cats2max_ba2]
-        dofs = [num_results1 - 1, num_results2 - 1]
-        figsize = (8, 6)
-    else:
-        raise ValueError('"results" cannot contain more than 2 entries.')
+    # get data
+    num_cats2ba_means1, num_cats2ba_sems1, param2val1, num_results1 = summary
+    d1s = [num_cats2ba_means1]
+    d2s = [num_cats2ba_sems1]
+    dofs = [num_results1 - 1]
+
+    # title
+    if title is None:
+        title_base = ''
+        for param, val in sorted(param2val1.items(), key=lambda i: i[0]):
+            title_base += '{}={}\n'.format(param, val)
+        title = title_base + '\nn={}'.format(num_results1)
 
     # fig
-    fig, ax = plt.subplots(figsize=figsize, dpi=None)
+    fig, ax = plt.subplots(figsize=fig_size, dpi=None)
     plt.title(title, fontsize=fontsize)
     ax.set_xlabel('Iteration', fontsize=fontsize)
     ax.set_ylabel('Balanced Accuracy +/-\n{}%-Confidence Interval'.format(confidence * 100), fontsize=fontsize)
@@ -96,7 +81,7 @@ def plot_ba_trajectories(results: Tuple[Tuple[dict, dict, dict, dict, int], ...]
     ax.spines['top'].set_visible(False)
     ax.tick_params(axis='both', which='both', top=False, right=False)
     # ticks (ba is calculated before training update, so first ba is x=0, and last x=num_ba-1)
-    num_x = param2val1['num_partitions'] * param2val1['num_iterations']
+    num_x = param2val1['num_parts'] * param2val1['num_iterations']
     xticks = np.arange(0, num_x + x_step, x_step)
     yticks = np.linspace(0.5, 1.00, 6, endpoint=True).round(2)
     ax.set_xticks(xticks)
@@ -111,7 +96,7 @@ def plot_ba_trajectories(results: Tuple[Tuple[dict, dict, dict, dict, int], ...]
 
     # plot
     x = np.arange(num_x)
-    for n, (d1, d2, d3, dof) in enumerate(zip(d1s, d2s, d3s, dofs)):
+    for n, (d1, d2, dof) in enumerate(zip(d1s, d2s, dofs)):
         num_trajectories = len(d1)
         palette = iter(sns.color_palette('hls', num_trajectories))
         for num_cats in plot_num_cats_list:
@@ -126,9 +111,7 @@ def plot_ba_trajectories(results: Tuple[Tuple[dict, dict, dict, dict, int], ...]
             q = (1 - confidence) / 2.
             margins = ba_sems * stats.t.ppf(q, dof)
             ax.fill_between(x, ba_means - margins, ba_means + margins, color=c, alpha=0.2)
-            # max_ba
-            if d3 is not None and plot_max_ba:
-                ax.axhline(y=d3[num_cats], linestyle='dashed', color=c, alpha=0.5)
+
     if legend:
         plt.legend(loc='upper left', frameon=False, fontsize=fontsize)
 

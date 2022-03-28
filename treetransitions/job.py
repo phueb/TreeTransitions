@@ -15,53 +15,53 @@ def main(param2val):
     params = Params.from_param2val(param2val)
     print(params, flush=True)
 
-    toy_data = ToyData(params, max_ba=False if config.Eval.debug else True)  # True to enable plotting of max_ba
+    # artificial data
+    toy_data = ToyData(params)
 
-    srn = RNN(toy_data.num_vocab, params)
-
-    name2col = {}
+    # model
+    rnn = RNN(toy_data.num_vocab, params)
 
     # train loop
+    name2col = {}
+    eval_steps = []
+    eval_step = 0
     for part_id, part_id_seqs in enumerate(toy_data.gen_part_id_seqs()):
-        part_num = part_id + 1
 
-        print('num part_id_seqs in partition={}'.format(len(part_id_seqs)))
+        print(f'num sequences in partition={len(part_id_seqs)}')
+
         # perplexity
-        pp = srn.calc_seqs_pp(part_id_seqs) if config.Eval.calc_pp else 0
+        pp = rnn.calc_seqs_pp(part_id_seqs) if config.Eval.calc_pp else np.nan
 
         # iterations
         for iter_id in range(params.num_iterations):
-            iter_num = iter_id + 1
 
-            # ba
+            # evaluate
+            eval_steps.append(eval_step)
             for num_cats in params.num_cats_list:
-                probes = toy_data.x_words
+                probes = toy_data.xws
                 probe2cat = toy_data.num_cats2probe2cat[num_cats]
 
-                wx = srn.model.wx.weight.detach().cpu().numpy()
-                p_acts = np.asarray([wx[toy_data.word2id[p], :] for p in probes])
+                wx = rnn.model.wx.weight.detach().cpu().numpy()
+                p_acts = np.asarray([wx[toy_data.token2id[p], :] for p in probes])
                 ba = calc_ba(cosine_similarity(p_acts), probes, probe2cat)
 
                 name2col.setdefault('ba_{}'.format(num_cats), []).append(ba)
 
-                print('partition={:>2}/{:>2} | ba={:.3f} num_cats={}'.format(
-                    part_num, params.num_partitions, ba, num_cats))
+                print(f'partition={part_id + 1:>2}/{params.num_parts:>2} | ba={ba:.3f} num_cats={num_cats}')
 
-            print('partition={:>2}/{:>2} iteration {}/{} | before-training partition pp={:>5}\n'.format(
-                part_num, params.num_partitions, iter_num, params.num_iterations, pp), flush=True)
+            print(f'partition={part_id + 1:>2}/{params.num_parts:>2} iteration {iter_id + 1}/{params.num_iterations} | '
+                  f'before-training partition pp={pp:>5}\n', flush=True)
 
             # train
-            srn.train_partition(part_id_seqs, verbose=False)  # a seq is a window (e.g. a bi-gram)
-
-    # save max_ba
-    for num_cats, max_ba in toy_data.num_cats2max_ba.items():
-        name2col.setdefault('max_ba_{}'.format(num_cats), []).append(max_ba)
+            rnn.train_partition(part_id_seqs, verbose=False)
+            eval_step += len(part_id_seqs) // params.batch_size
 
     # return performance as pandas Series
     series_list = []
     for name, col in name2col.items():
-        print('Making pandas series with name={} and length={}'.format(name, len(col)))
-        s = pd.Series(col, index=np.arange(col))
+        print(f'Making pandas series with name={name} and length={len(col)}')
+        s = pd.Series(col, index=eval_steps)
+        s.index.name = name
         s.name = name
         series_list.append(s)
 

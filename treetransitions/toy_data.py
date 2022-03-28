@@ -6,7 +6,6 @@ from cytoolz import itertoolz
 from matplotlib.colors import to_hex
 
 from treetransitions.params import Params
-from treetransitions.figs import plot_heatmap
 
 
 class ToyData:
@@ -23,7 +22,7 @@ class ToyData:
 
         self.vocab = self.xws + self.yws
         self.num_vocab = len(self.vocab)  # used by rnn
-        self.word2id = {word: n for n, word in enumerate(self.vocab)}
+        self.token2id = {word: n for n, word in enumerate(self.vocab)}
 
         # the probability of co-occurrence of x and y words
         # this is where the hierarchical structure of the data is created
@@ -35,7 +34,7 @@ class ToyData:
                                    for num_cats in params.num_cats_list}
 
         # sequences
-        self.id_sequences_mat = None  # TODO
+        self.id_sequences_mat = self.make_id_sequences_mat()  # [num sequences, 2]
 
         # assign color map to each category structure
         self.num_cats2color_map = {num_cats: plt.cm.get_cmap('hsv', num_cats + 1)
@@ -84,7 +83,36 @@ class ToyData:
                 assert 0.0 <= np.max(res) <= 1.0
 
             if plot:
+                from treetransitions.figs import plot_heatmap
                 plot_heatmap(res, [], [])
+
+        return res
+
+    def make_id_sequences_mat(self) -> np.array:
+        """
+        return a matrix of shape [num sequences, 2] used for training,
+         where first item = x-word token ID, and second item = y-word token ID
+        """
+
+        sequences = []
+
+        for xw in np.random.choice(self.xws, size=self.params.num_seqs):
+
+            # get y-word
+            probabilities = self.p_mat[self.token2id[xw], :] / self.p_mat[self.token2id[xw], :].sum()
+            assert len(probabilities) == len(self.yws)
+            yw = np.random.choice(self.yws, p=probabilities)
+
+            xw_token_id = self.token2id[xw]
+            yw_token_id = self.token2id[yw]
+
+            # collect
+            sequences.append([xw_token_id, yw_token_id])
+
+        res = np.vstack(sequences)
+
+        assert len(res) % self.params.num_parts == 0
+        assert len(res) % self.params.batch_size == 0
 
         return res
 
@@ -196,3 +224,15 @@ class ToyData:
         dendrogram(self.z, ax=ax, color_threshold=None, link_color_func=lambda i: link2color[i])
         ax.set_xticklabels([])
         plt.show()
+
+    def gen_part_id_seqs(self):
+        """
+        return sequences of token ids for training/
+
+        Note:
+            a sequence is a window of two items, Xi and Yi
+        """
+
+        for res in np.vsplit(self.id_sequences_mat, self.params.num_parts):
+            print(f'Shape of matrix containing sequences in partition={res.shape}')
+            yield res

@@ -1,7 +1,6 @@
 matplotlib
 cytoolz
 seaborn
-PyYAML
 pandas
 pyprind
 sklearn
