@@ -11,6 +11,6 @@ bayesian-optimization==0.6
 tables
 python-dotenv
 sortedcontainers
-numpy==1.16.0
+numpy==1.21.0
 torch
 https://github.com/phueb/Ludwig/archive/v2.1.2.tar.gz
