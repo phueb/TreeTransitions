@@ -46,10 +46,10 @@ def plot_heatmap(mat: np.array,
     plt.show()
 
 
-def plot_ba_trajectories(summary: Tuple[dict, dict, dict, int],
-                         plot_num_cats_list: Tuple[int],
+def plot_ba_trajectories(summary: Tuple[dict, dict, int, int],
+                         label: str,
+                         plot_num_cats_list: Tuple[int, ...],
                          y_max: float = 1.0,
-                         x_step: int = 5,
                          is_grid: bool = False,
                          confidence: float = 0.95,
                          solid_line_id: int = 0,  # 0 or 1 to flip which line is solid
@@ -60,42 +60,36 @@ def plot_ba_trajectories(summary: Tuple[dict, dict, dict, int],
                          ):
 
     # get data
-    num_cats2ba_means1, num_cats2ba_sems1, param2val1, num_results1 = summary
-    d1s = [num_cats2ba_means1]
-    d2s = [num_cats2ba_sems1]
-    dofs = [num_results1 - 1]
+    num_cats2ba_means, num_cats2ba_sems, eval_steps, num_results = summary
+    d1s = [num_cats2ba_means]
+    d2s = [num_cats2ba_sems]
+    dofs = [num_results - 1]
 
     # title
     if title is None:
-        title_base = ''
-        for param, val in sorted(param2val1.items(), key=lambda i: i[0]):
-            title_base += '{}={}\n'.format(param, val)
-        title = title_base + '\nn={}'.format(num_results1)
+        title = label
 
     # fig
-    fig, ax = plt.subplots(figsize=fig_size, dpi=None)
+    fig, ax = plt.subplots(figsize=fig_size, dpi=200)
     plt.title(title, fontsize=fontsize)
-    ax.set_xlabel('Iteration', fontsize=fontsize)
-    ax.set_ylabel('Balanced Accuracy +/-\n{}%-Confidence Interval'.format(confidence * 100), fontsize=fontsize)
+    ax.set_xlabel('Traning Step', fontsize=fontsize)
+    ax.set_ylabel(f'Balanced Accuracy +/-\n{confidence * 100}%-Confidence Interval',
+                  fontsize=fontsize)
     ax.spines['right'].set_visible(False)
     ax.spines['top'].set_visible(False)
     ax.tick_params(axis='both', which='both', top=False, right=False)
-    # ticks (ba is calculated before training update, so first ba is x=0, and last x=num_ba-1)
-    num_x = param2val1['num_parts'] * param2val1['num_iterations']
-    xticks = np.arange(0, num_x + x_step, x_step)
     yticks = np.linspace(0.5, 1.00, 6, endpoint=True).round(2)
-    ax.set_xticks(xticks)
-    ax.set_xticklabels(xticks)
+    # ax.set_xticks(eval_steps)
+    # ax.set_xticklabels(eval_steps)
     ax.set_yticks(yticks)
     ax.set_yticklabels(yticks)
     ax.set_ylim([0.5, y_max])
-    ax.set_xlim([0, xticks[-1]])
     if is_grid:
         ax.yaxis.grid(True)
         ax.xaxis.grid(True)
 
     # plot
-    x = np.arange(num_x)
+
     for n, (d1, d2, dof) in enumerate(zip(d1s, d2s, dofs)):
         num_trajectories = len(d1)
         palette = iter(sns.color_palette('hls', num_trajectories))
@@ -103,17 +97,19 @@ def plot_ba_trajectories(summary: Tuple[dict, dict, dict, int],
             c = next(palette)
             # ba mean
             ba_means = np.asarray(d1[num_cats])
-            ax.plot(x, ba_means, color=c,
+            ax.plot(eval_steps, ba_means, color=c,
                     label='num_cats={}'.format(num_cats) if n == 0 else '_nolegend_',
                     linestyle='-' if n == solid_line_id else ':')
             # ba confidence interval
             ba_sems = np.asarray(d2[num_cats])
             q = (1 - confidence) / 2.
             margins = ba_sems * stats.t.ppf(q, dof)
-            ax.fill_between(x, ba_means - margins, ba_means + margins, color=c, alpha=0.2)
+            ax.fill_between(eval_steps, ba_means - margins, ba_means + margins, color=c, alpha=0.2)
 
     if legend:
-        plt.legend(loc='upper left', frameon=False, fontsize=fontsize)
+        plt.legend(loc='lower right',
+                   frameon=False,
+                   fontsize=fontsize)
 
     plt.show()
 

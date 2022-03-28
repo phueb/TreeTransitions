@@ -1,12 +1,8 @@
 from functools import partial
-
 import numpy as np
 from bayes_opt import BayesianOptimization
-from scipy import stats
 from scipy.cluster.hierarchy import linkage, dendrogram
 from scipy.spatial.distance import pdist
-
-from results.plot_ba_trajectories import TOLERANCE
 
 
 def calc_ba(probe_sims, probes, probe2cat, num_opt_init_steps=1, num_opt_steps=10):
@@ -89,7 +85,9 @@ def cluster(m, original_row_words=None, original_col_words=None):
         return res, row_labels, col_labels
 
 
-def correct_artifacts(df):
+def correct_artifacts(df,
+                      tolerance: float,
+                      ):
     """
     remove negative-going dips in balanced accuracy curves
     """
@@ -97,6 +95,6 @@ def correct_artifacts(df):
         num_bas = len(bas)
         for i in range(num_bas - 2):
             val1, val2, val3 = bas[[i, i+1, i+2]]
-            if (val1 - TOLERANCE) > val2 < (val3 - TOLERANCE):
+            if (val1 - tolerance) > val2 < (val3 - tolerance):
                 bas[i+1] = np.mean([val1, val3])
     return df
