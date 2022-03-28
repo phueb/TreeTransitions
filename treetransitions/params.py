@@ -11,7 +11,10 @@ param2requests = {
 
 param2default = {
 
-    'num_cats_list': (2, 4, 8, 16, 32),
+    'num_x_words': 512,  # also the number of y-words
+    'num_cats_list': (2, 4),  # (2, 4, 8, 16, 32),
+
+    # training
     'num_iterations': 20,
     'num_partitions': 2,
     'rnn_type': 'srn',
@@ -24,7 +27,11 @@ param2default = {
 
 @dataclass
 class Params(object):
+    # data
+    num_x_words: int  # number of x-words = number of y-words
     num_cats_list: Tuple[int, ...]
+
+    # training
     num_iterations: int
     num_partitions: int
     rnn_type: str

@@ -9,7 +9,8 @@ def plot_heatmap(mat: np.array,
                  y_tick_labels: List[str],
                  x_tick_labels: List[str],
                  title: str = '',
-                 x_label: str = '',
+                 x_label: Optional[str] = None,
+                 y_label: Optional[str] = None,
                  tick_label_font_size=1,
                  fontsize=16,
                  ):
@@ -23,14 +24,13 @@ def plot_heatmap(mat: np.array,
               aspect='equal',
               cmap='jet',
               interpolation='nearest')
-    ax.set_xlabel(x_label, fontsize=fontsize)
-    ax.set_ylabel('Context words', fontsize=fontsize)
+    ax.set_xlabel(x_label or 'Y-Words', fontsize=fontsize)
+    ax.set_ylabel(y_label or 'X-Words', fontsize=fontsize)
 
     # ticks
-    num_cols = len(mat.T)
+    num_rows, num_cols = mat.shape
     ax.set_xticks(np.arange(num_cols))
     ax.xaxis.set_ticklabels(x_tick_labels, rotation=90, fontsize=tick_label_font_size)
-    num_rows = len(mat)
     ax.set_yticks(np.arange(num_rows))
     ax.yaxis.set_ticklabels(y_tick_labels,  # no need to reverse (because no extent is set)
                             rotation=0, fontsize=tick_label_font_size)
